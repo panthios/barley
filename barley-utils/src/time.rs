@@ -1,4 +1,5 @@
-use tokio::time::{sleep, Duration};
+use tokio::time::sleep;
+pub use tokio::time::Duration;
 use barley_runtime::{Action, Result};
 use async_trait::async_trait;
 
