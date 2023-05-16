@@ -9,8 +9,11 @@ barley-runtime = { path = "../barley-runtime" }
 tokio = { version = "1.28.1", optional = true }
 
 [features]
-default = ["time"]
-time = ["dep:tokio", "tokio?/time"]
+default = ["time", "fs"]
+tokio = ["dep:tokio"]
+time = ["tokio?/time", "dep:tokio"]
+fs = ["tokio?/fs", "io", "dep:tokio"]
+io = ["tokio?/io-util", "dep:tokio"]
 
 [dev-dependencies]
 tokio = { version = "1.28.1", features = ["test-util", "macros"] }
