@@ -1,8 +1,8 @@
 use tokio::fs::File as TokioFile;
 use tokio::io::AsyncWriteExt;
-use barley_runtime::{Action, Result, Context, barley_action};
 use async_trait::async_trait;
 use std::path::PathBuf;
+use barley_runtime::*;
 
 
 #[barley_action]
@@ -18,9 +18,10 @@ impl FileW {
   }
 }
 
+#[barley_action]
 #[async_trait]
 impl Action for FileW {
-  async fn check(&self, _ctx: &mut Context) -> Result<bool> {
+  async fn check(&self, ctx: &mut Context) -> Result<bool> {
     let path = PathBuf::from(&self.path);
     Ok(path.exists())
   }

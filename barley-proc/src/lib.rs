@@ -3,14 +3,28 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use proc_macro_error::{proc_macro_error, abort};
 use quote::quote;
-use syn::{self, Fields, FieldsNamed, Ident};
+use syn::{self, Fields, FieldsNamed, Ident, ItemImpl, ImplItem, Item};
 
 
 #[proc_macro_error]
 #[proc_macro_attribute]
 pub fn barley_action(_attr: TokenStream, input: TokenStream) -> TokenStream {
-  let mut ast = syn::parse_macro_input!(input as syn::ItemStruct);
+  let ast = syn::parse_macro_input!(input as Item);
 
+  match ast {
+    Item::Struct(struct_) => {
+      barley_action_struct(struct_)
+    },
+    Item::Impl(impl_) => {
+      barley_action_impl(impl_)
+    },
+    _ => {
+      abort!(ast, "Barley actions must be structs or Action impls");
+    }
+  }
+}
+
+fn barley_action_struct(mut ast: syn::ItemStruct) -> TokenStream {
   match &mut ast.fields {
     Fields::Named(named) => {
       process_named_fields(named);
@@ -49,4 +63,77 @@ fn process_named_fields(fields: &mut FieldsNamed) {
   };
 
   fields.named.push(new_field);
+}
+
+fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
+  let trait_ = ast.trait_.clone().unwrap();
+
+  let mut check = None;
+  let mut perform = None;
+
+  let mut check_index = None;
+  let mut perform_index = None;
+
+  for (index, item) in ast.items.iter().enumerate() {
+    if let ImplItem::Fn(fn_) = item {
+      if fn_.sig.ident == "check" {
+        check = Some(fn_);
+        check_index = Some(index);
+      } else if fn_.sig.ident == "perform" {
+        perform = Some(fn_);
+        perform_index = Some(index);
+      }
+    }
+  }
+
+  if check.is_none() {
+    abort!(trait_.1, "Barley actions must implement the `check` method");
+  }
+
+  if perform.is_none() {
+    abort!(trait_.1, "Barley actions must implement the `perform` method");
+  }
+
+  let check = check.unwrap();
+  let perform = perform.unwrap();
+
+  let check_body = check.block.clone();
+  let perform_body = perform.block.clone();
+
+  let check = quote! {
+    async fn check(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<bool> {
+      let __barley_deps = self.__barley_deps.clone();
+
+      for dep in __barley_deps {
+        if dep.check(ctx).await? {
+          return Ok(true);
+        }
+      }
+
+      #check_body
+    }
+  };
+
+  let perform = quote! {
+    async fn perform(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<()> {
+      #perform_body
+    }
+  };
+
+  if check_index > perform_index {
+    ast.items.remove(check_index.unwrap());
+    ast.items.remove(perform_index.unwrap());
+  } else {
+    ast.items.remove(perform_index.unwrap());
+    ast.items.remove(check_index.unwrap());
+  }
+
+  ast.items.push(syn::parse_quote!(#check));
+  ast.items.push(syn::parse_quote!(#perform));
+
+  let output = quote! {
+    #ast
+  };
+
+  output.into()
 }

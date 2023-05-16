@@ -1,7 +1,7 @@
 use tokio::time::sleep;
 pub use tokio::time::Duration;
-use barley_runtime::{Action, Result, Context, barley_action};
 use async_trait::async_trait;
+use barley_runtime::*;
 
 
 #[barley_action]
@@ -16,13 +16,14 @@ impl Sleep {
   }
 }
 
+#[barley_action]
 #[async_trait]
 impl Action for Sleep {
-  async fn check(&self, _ctx: &mut Context) -> Result<bool> {
+  async fn check(&self, ctx: &mut Context) -> Result<bool> {
     Ok(false)
   }
 
-  async fn perform(&self, _ctx: &mut Context) -> Result<()> {
+  async fn perform(&self, ctx: &mut Context) -> Result<()> {
     sleep(self.duration).await;
     Ok(())
   }
