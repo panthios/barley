@@ -1,30 +1,35 @@
 use async_trait::async_trait;
 pub use anyhow::Result;
+use std::rc::Rc;
 
 
 #[async_trait]
 pub trait Action {
-  async fn check(&self) -> Result<bool>;
-  async fn perform(&self) -> Result<()>;
+  async fn check(&self, ctx: &mut Context) -> Result<bool>;
+  async fn perform(&self, ctx: &mut Context) -> Result<()>;
 }
 
 pub struct Context<'ctx> {
-  pub actions: Vec<Box<dyn Action + 'ctx>>
+  actions: Vec<Rc<dyn Action + 'ctx>>
 }
 
 impl<'ctx> Context<'ctx> {
   pub fn new() -> Self {
-    Self { actions: Vec::new() }
+    Self {
+      actions: vec![]
+    }
   }
 
   pub fn add_action<A: Action + 'ctx>(&mut self, action: A) {
-    self.actions.push(Box::new(action));
+    self.actions.push(Rc::new(action));
   }
 
-  pub async fn run(&self) -> Result<()> {
-    for action in self.actions.iter() {
-      if !action.check().await? {
-        action.perform().await?;
+  pub async fn run(&mut self) -> Result<()> {
+    let actions = self.actions.clone();
+
+    for action in actions {
+      if !action.check(self).await? {
+        action.perform(self).await?;
       }
     }
 
