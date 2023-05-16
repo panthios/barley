@@ -4,6 +4,7 @@ pub use anyhow::Result;
 
 #[async_trait]
 pub trait Action {
+  async fn check(&self) -> Result<bool>;
   async fn perform(&self) -> Result<()>;
 }
 
@@ -22,7 +23,9 @@ impl<'ctx> Context<'ctx> {
 
   pub async fn run(&self) -> Result<()> {
     for action in self.actions.iter() {
-      action.perform().await?;
+      if !action.check().await? {
+        action.perform().await?;
+      }
     }
 
     Ok(())

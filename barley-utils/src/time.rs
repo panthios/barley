@@ -16,6 +16,10 @@ impl Sleep {
 
 #[async_trait]
 impl Action for Sleep {
+  async fn check(&self) -> Result<bool> {
+    Ok(false)
+  }
+
   async fn perform(&self) -> Result<()> {
     sleep(self.duration).await;
     Ok(())
