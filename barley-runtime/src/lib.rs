@@ -1,17 +1,18 @@
 use async_trait::async_trait;
 pub use anyhow::Result;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::collections::VecDeque;
 
+pub use barley_proc::barley_action;
 
 #[async_trait]
-pub trait Action {
+pub trait Action: Send + Sync {
   async fn check(&self, ctx: &mut Context) -> Result<bool>;
   async fn perform(&self, ctx: &mut Context) -> Result<()>;
 }
 
 pub struct Context<'ctx> {
-  actions: VecDeque<Rc<dyn Action + 'ctx>>
+  actions: VecDeque<Arc<dyn Action + 'ctx>>
 }
 
 impl<'ctx> Context<'ctx> {
@@ -22,7 +23,7 @@ impl<'ctx> Context<'ctx> {
   }
 
   pub fn add_action<A: Action + 'ctx>(&mut self, action: A) {
-    self.actions.push_back(Rc::new(action));
+    self.actions.push_back(Arc::new(action));
   }
 
   pub async fn run(&mut self) -> Result<()> {

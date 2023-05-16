@@ -1,16 +1,18 @@
 use tokio::time::sleep;
 pub use tokio::time::Duration;
-use barley_runtime::{Action, Result, Context};
+use barley_runtime::{Action, Result, Context, barley_action};
 use async_trait::async_trait;
 
 
+#[barley_action]
+#[derive(Default)]
 pub struct Sleep {
   duration: Duration
 }
 
 impl Sleep {
   pub fn new(duration: Duration) -> Self {
-    Self { duration }
+    Self { duration, ..Default::default() }
   }
 }
 

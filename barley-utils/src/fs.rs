@@ -1,10 +1,12 @@
 use tokio::fs::File as TokioFile;
 use tokio::io::AsyncWriteExt;
-use barley_runtime::{Action, Result, Context};
+use barley_runtime::{Action, Result, Context, barley_action};
 use async_trait::async_trait;
 use std::path::PathBuf;
 
 
+#[barley_action]
+#[derive(Default)]
 pub struct FileW {
   path: String,
   content: String
@@ -12,7 +14,7 @@ pub struct FileW {
 
 impl FileW {
   pub fn new(path: String, content: String) -> Self {
-    Self { path, content }
+    Self { path, content, ..Default::default() }
   }
 }
 

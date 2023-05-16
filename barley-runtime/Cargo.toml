@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.71"
 async-trait = "0.1.68"
+barley-proc = { path = "../barley-proc" }

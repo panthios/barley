@@ -45,7 +45,7 @@ fn process_named_fields(fields: &mut FieldsNamed) {
     mutability: syn::FieldMutability::None,
     ident: Some(Ident::new("__barley_deps", Span::call_site())),
     colon_token: None,
-    ty: syn::parse_quote!(Vec<Rc<dyn barley_runtime::Action>>)
+    ty: syn::parse_quote!(Vec<std::sync::Arc<dyn barley_runtime::Action>>)
   };
 
   fields.named.push(new_field);
