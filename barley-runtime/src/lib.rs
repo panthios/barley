@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 pub use anyhow::Result;
 use std::rc::Rc;
+use std::collections::VecDeque;
 
 
 #[async_trait]
@@ -10,25 +11,23 @@ pub trait Action {
 }
 
 pub struct Context<'ctx> {
-  actions: Vec<Rc<dyn Action + 'ctx>>
+  actions: VecDeque<Rc<dyn Action + 'ctx>>
 }
 
 impl<'ctx> Context<'ctx> {
   pub fn new() -> Self {
     Self {
-      actions: vec![]
+      actions: VecDeque::new()
     }
   }
 
   pub fn add_action<A: Action + 'ctx>(&mut self, action: A) {
-    self.actions.push(Rc::new(action));
+    self.actions.push_back(Rc::new(action));
   }
 
   pub async fn run(&mut self) -> Result<()> {
-    let actions = self.actions.clone();
-
-    for action in actions {
-      if !action.check(self).await? {
+    while let Some(action) = self.actions.pop_front() {
+      if action.check(self).await? {
         action.perform(self).await?;
       }
     }
