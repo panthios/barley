@@ -1,5 +1,6 @@
 [workspace]
 members = [
   "barley-runtime",
-  "barley-utils"
+  "barley-utils",
+  "barley-proc"
 ]
