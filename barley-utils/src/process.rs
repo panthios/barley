@@ -1,0 +1,41 @@
+use async_process::Command;
+use async_trait::async_trait;
+use barley_runtime::*;
+
+
+#[barley_action]
+#[derive(Default)]
+pub struct Process {
+  command: Vec<String>
+}
+
+impl Process {
+  pub fn new(command: Vec<String>) -> Self {
+    Self { command, ..Default::default() }
+  }
+}
+
+#[barley_action]
+#[async_trait]
+impl Action for Process {
+  async fn check(&self, ctx: &mut Context) -> Result<bool> {
+    Ok(false)
+  }
+
+  async fn perform(&self, ctx: &mut Context) -> Result<()> {
+    let mut command = Command::new(&self.command[0]);
+    command.args(&self.command[1..]);
+
+    let output = command.output().await?;
+
+    if output.status.success() {
+      Ok(())
+    } else {
+      Err(anyhow::anyhow!("Process failed"))
+    }
+  }
+
+  async fn rollback(&self, ctx: &mut Context) -> Result<()> {
+    Ok(())
+  }
+}

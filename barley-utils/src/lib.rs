@@ -6,3 +6,6 @@ pub mod fs;
 
 #[cfg(feature = "http")]
 pub mod http;
+
+#[cfg(feature = "process")]
+pub mod process;
