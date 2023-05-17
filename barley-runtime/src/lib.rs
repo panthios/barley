@@ -19,13 +19,15 @@ pub trait Action: Send + Sync {
 pub struct Context<'ctx> {
   actions: VecDeque<Arc<dyn Action + 'ctx>>,
   variables: HashMap<String, String>,
+  callbacks: ContextCallbacks
 }
 
 impl<'ctx> Context<'ctx> {
-  pub fn new() -> Self {
+  pub fn new(callbacks: ContextCallbacks) -> Self {
     Self {
       actions: VecDeque::new(),
-      variables: HashMap::new()
+      variables: HashMap::new(),
+      callbacks
     }
   }
 
@@ -36,7 +38,24 @@ impl<'ctx> Context<'ctx> {
   pub async fn run(&mut self) -> Result<()> {
     while let Some(action) = self.actions.pop_front() {
       if action.check(self).await? {
-        action.perform(self).await?;
+        if let Some(callback) = self.callbacks.on_action_started {
+          callback(action.as_ref());
+        }
+
+        match action.perform(self).await {
+          Ok(_) => {
+            if let Some(callback) = self.callbacks.on_action_finished {
+              callback(action.as_ref());
+            }
+          },
+          Err(err) => {
+            if let Some(callback) = self.callbacks.on_action_failed {
+              callback(action.as_ref(), &err);
+            }
+
+            action.rollback(self).await?;
+          }
+        }
       }
     }
 
@@ -50,4 +69,11 @@ impl<'ctx> Context<'ctx> {
   pub fn get_variable(&self, name: &str) -> Option<&str> {
     self.variables.get(name).map(|s| s.as_str())
   }
+}
+
+#[derive(Default)]
+pub struct ContextCallbacks {
+  pub on_action_started: Option<fn(&dyn Action)>,
+  pub on_action_finished: Option<fn(&dyn Action)>,
+  pub on_action_failed: Option<fn(&dyn Action, &anyhow::Error)>
 }
