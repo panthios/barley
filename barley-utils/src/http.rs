@@ -19,6 +19,12 @@ impl HttpGet {
 #[async_trait]
 impl Action for HttpGet {
   async fn check(&self, ctx: &mut Context) -> Result<bool> {
+    let var_name = format!("http_get__{}", self.url);
+
+    if let Some(_) = ctx.get_variable(&var_name) {
+      return Ok(true);
+    }
+
     Ok(false)
   }
 
@@ -26,7 +32,9 @@ impl Action for HttpGet {
     let res = get(&self.url).await?;
     let body = res.text().await?;
 
-    ctx.set_variable("http_get", &body);
+    let var_name = format!("http_get__{}", self.url);
+
+    ctx.set_variable(&var_name, &body);
 
     Ok(())
   }
