@@ -11,9 +11,9 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-barley-runtime = "0.0.1"
+barley-runtime = { version = "0.0.1", path = "../barley-runtime" }
 indicatif = "0.17.3"
 
 [dev-dependencies]
-barley-utils = { version = "0.0.1", features = ["time", "process"] }
+barley-utils = { version = "0.0.1", features = ["full"], path = "../barley-utils" }
 tokio = { version = "1.28.1", features = ["macros", "rt-multi-thread"] }
