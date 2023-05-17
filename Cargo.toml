@@ -2,5 +2,6 @@
 members = [
   "barley-runtime",
   "barley-utils",
-  "barley-proc"
+  "barley-proc",
+  "barley-interface"
 ]
