@@ -144,6 +144,28 @@ impl<'ctx> Context<'ctx> {
   pub fn get_variable(&self, name: &str) -> Option<&str> {
     self.variables.get(name).map(|s| s.as_str())
   }
+
+  /// Sets a local variable for the action.
+  /// 
+  /// This variable will be namespaced to the action,
+  /// and will not be visible to other actions in any
+  /// reasonable way. Actions could fetch the ID of the
+  /// current action, and use that to access the variable,
+  /// but that's voodoo magic and you shouldn't do it.
+  pub fn set_local(&mut self, action: &dyn Action, name: &str, value: &str) {
+    self.set_variable(&format!("{}::{}", action.id(), name), value);
+  }
+
+  /// Gets a local variable for the action.
+  /// 
+  /// This variable will be namespaced to the action,
+  /// and will not be visible to other actions in any
+  /// reasonable way. Actions could fetch the ID of the
+  /// current action, and use that to access the variable,
+  /// but that's voodoo magic and you shouldn't do it.
+  pub fn get_local(&self, action: &dyn Action, name: &str) -> Option<&str> {
+    self.get_variable(&format!("{}::{}", action.id(), name))
+  }
 }
 
 /// Callbacks for the context.
