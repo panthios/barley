@@ -24,7 +24,9 @@ impl Action for HttpGet {
 
   async fn perform(&self, ctx: &mut Context) -> Result<()> {
     let res = get(&self.url).await?;
-    let _body = res.text().await?;
+    let body = res.text().await?;
+
+    ctx.set_variable("http_get", &body);
 
     Ok(())
   }
