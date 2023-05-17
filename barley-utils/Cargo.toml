@@ -6,14 +6,17 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.68"
 barley-runtime = { path = "../barley-runtime" }
+reqwest = { version = "0.11.17", optional = true }
 tokio = { version = "1.28.1", optional = true }
 
 [features]
-default = ["time", "fs"]
+default = ["time", "fs", "http"]
 tokio = ["dep:tokio"]
-time = ["tokio?/time", "dep:tokio"]
-fs = ["tokio?/fs", "io", "dep:tokio"]
-io = ["tokio?/io-util", "dep:tokio"]
+reqwest = ["dep:reqwest", "tokio"]
+time = ["tokio?/time", "tokio"]
+fs = ["tokio?/fs", "io", "tokio"]
+io = ["tokio?/io-util", "tokio"]
+http = ["reqwest", "tokio"]
 
 [dev-dependencies]
 tokio = { version = "1.28.1", features = ["test-util", "macros"] }
