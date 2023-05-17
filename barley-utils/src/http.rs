@@ -46,4 +46,8 @@ impl Action for HttpGet {
   async fn rollback(&self, ctx: &mut Context) -> Result<()> {
     Ok(())
   }
+
+  fn display_name(&self) -> String {
+    format!("HTTP GET \"{}\"", self.url)
+  }
 }

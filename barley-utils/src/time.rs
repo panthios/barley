@@ -37,4 +37,8 @@ impl Action for Sleep {
   async fn rollback(&self, ctx: &mut Context) -> Result<()> {
     Ok(())
   }
+
+  fn display_name(&self) -> String {
+    format!("Sleep for {:?}", self.duration)
+  }
 }

@@ -43,6 +43,10 @@ impl Action for FileW {
 
     Ok(())
   }
+
+  fn display_name(&self) -> String {
+    format!("Write data to \"{}\"", self.path)
+  }
 }
 
 
@@ -90,5 +94,9 @@ impl Action for TempFile {
     tokio::fs::remove_file(path).await?;
 
     Ok(())
+  }
+
+  fn display_name(&self) -> String {
+    format!("Create temporary file \"{}\"", self.rel_path)
   }
 }

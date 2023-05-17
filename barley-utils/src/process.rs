@@ -43,4 +43,8 @@ impl Action for Process {
   async fn rollback(&self, ctx: &mut Context) -> Result<()> {
     Ok(())
   }
+
+  fn display_name(&self) -> String {
+    format!("Shell: {}", &self.command[0])
+  }
 }

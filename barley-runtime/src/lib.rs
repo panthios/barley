@@ -56,6 +56,9 @@ pub trait Action: Send + Sync {
 
   /// Add a dependency to the action.
   fn add_dep(&mut self, action: Arc<dyn Action>);
+
+  /// Get the display name of the action.
+  fn display_name(&self) -> String;
 }
 
 /// A context for running actions.

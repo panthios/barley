@@ -44,14 +44,14 @@ impl<'me> Interface<'me> {
     }
 
     pub(crate) fn on_action_started(action: &dyn Action) {
-        println!("Started: {}", action.id());
+        println!("Started: {}", action.display_name());
     }
 
     pub(crate) fn on_action_finished(action: &dyn Action) {
-        println!("Finished: {}", action.id());
+        println!("Finished: {}", action.display_name());
     }
 
     pub(crate) fn on_action_failed(action: &dyn Action, _err: &Error) {
-        println!("Failed: {}", action.id());
+        println!("Failed: {}", action.display_name());
     }
 }
