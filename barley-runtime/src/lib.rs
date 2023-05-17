@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-pub use anyhow::Result;
+pub use anyhow::{Result, Error};
 use std::sync::Arc;
 use std::collections::{VecDeque, HashMap};
 pub use uuid::Uuid as Id;
