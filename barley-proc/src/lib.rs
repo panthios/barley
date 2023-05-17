@@ -30,7 +30,7 @@ fn barley_action_struct(mut ast: syn::ItemStruct) -> TokenStream {
       process_named_fields(named);
     },
     Fields::Unnamed(_) => {
-      abort!(ast.ident, "Barley actions cannot have unnamed fields");
+      abort!(ast.ident, "Barley actions cannot have unnamed fields at this time");
     },
     Fields::Unit => {
       abort!(ast.ident, "Barley actions must have at least one field");
@@ -51,9 +51,13 @@ fn process_named_fields(fields: &mut FieldsNamed) {
     if ident == "__barley_deps" {
       abort!(ident, "Barley actions cannot have a field named `__barley_deps`");
     }
+
+    if ident == "__barley_id" {
+      abort!(ident, "Barley actions cannot have a field named `__barley_id`");
+    }
   }
 
-  let new_field = syn::Field {
+  let deps = syn::Field {
     attrs: vec![],
     vis: syn::Visibility::Inherited,
     mutability: syn::FieldMutability::None,
@@ -62,7 +66,17 @@ fn process_named_fields(fields: &mut FieldsNamed) {
     ty: syn::parse_quote!(Vec<std::sync::Arc<dyn barley_runtime::Action>>)
   };
 
-  fields.named.push(new_field);
+  let id = syn::Field {
+    attrs: vec![],
+    vis: syn::Visibility::Inherited,
+    mutability: syn::FieldMutability::None,
+    ident: Some(Ident::new("__barley_id", Span::call_site())),
+    colon_token: None,
+    ty: syn::parse_quote!(barley_runtime::Id)
+  };
+
+  fields.named.push(deps);
+  fields.named.push(id);
 }
 
 fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
@@ -136,6 +150,12 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
     }
   };
 
+  let id = quote! {
+    fn id(&self) -> barley_runtime::Id {
+      self.__barley_id
+    }
+  };
+
   if check_index > perform_index {
     ast.items.remove(check_index.unwrap());
     ast.items.remove(perform_index.unwrap());
@@ -147,6 +167,7 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
   ast.items.push(syn::parse_quote!(#check));
   ast.items.push(syn::parse_quote!(#perform));
   ast.items.push(syn::parse_quote!(#check_deps));
+  ast.items.push(syn::parse_quote!(#id));
 
   let output = quote! {
     #ast

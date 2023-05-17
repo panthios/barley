@@ -2,6 +2,7 @@ use async_trait::async_trait;
 pub use anyhow::Result;
 use std::sync::Arc;
 use std::collections::{VecDeque, HashMap};
+pub use uuid::Uuid as Id;
 
 pub use barley_proc::barley_action;
 
@@ -10,11 +11,13 @@ pub trait Action: Send + Sync {
   async fn check(&self, ctx: &mut Context) -> Result<bool>;
   async fn check_deps(&self, ctx: &mut Context) -> Result<bool>;
   async fn perform(&self, ctx: &mut Context) -> Result<()>;
+
+  fn id(&self) -> Id;
 }
 
 pub struct Context<'ctx> {
   actions: VecDeque<Arc<dyn Action + 'ctx>>,
-  variables: HashMap<String, String>
+  variables: HashMap<String, String>,
 }
 
 impl<'ctx> Context<'ctx> {
