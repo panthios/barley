@@ -8,6 +8,7 @@ pub use barley_proc::barley_action;
 #[async_trait]
 pub trait Action: Send + Sync {
   async fn check(&self, ctx: &mut Context) -> Result<bool>;
+  async fn check_deps(&self, ctx: &mut Context) -> Result<bool>;
   async fn perform(&self, ctx: &mut Context) -> Result<()>;
 }
 

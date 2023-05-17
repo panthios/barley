@@ -102,12 +102,8 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
 
   let check = quote! {
     async fn check(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<bool> {
-      let __barley_deps = self.__barley_deps.clone();
-
-      for dep in __barley_deps {
-        if dep.check(ctx).await? {
-          return Ok(true);
-        }
+      if !self.check_deps(ctx).await? {
+        return Ok(false);
       }
 
       #check_body
@@ -116,7 +112,27 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
 
   let perform = quote! {
     async fn perform(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<()> {
+      let deps = self.__barley_deps.clone();
+
+      for dep in deps {
+        if !dep.check(ctx).await? {
+          dep.perform(ctx).await?;
+        }
+      }
+
       #perform_body
+    }
+  };
+
+  let check_deps = quote! {
+    async fn check_deps(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<bool> {
+      for dep in self.__barley_deps.clone() {
+        if !dep.check(ctx).await? {
+          return Ok(false);
+        }
+      }
+
+      Ok(true)
     }
   };
 
@@ -130,6 +146,7 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
 
   ast.items.push(syn::parse_quote!(#check));
   ast.items.push(syn::parse_quote!(#perform));
+  ast.items.push(syn::parse_quote!(#check_deps));
 
   let output = quote! {
     #ast
