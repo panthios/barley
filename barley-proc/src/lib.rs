@@ -1,3 +1,12 @@
+#![deny(missing_docs)]
+
+//! `barley-proc`
+//! 
+//! This crate should not be used directly. It is used by the `barley` workflow
+//! engine to easily create new [`Action`]s.
+//! 
+//! [`Action`]: https://docs.rs/barley-runtime/latest/barley_runtime/trait.Action.html
+
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -5,7 +14,13 @@ use proc_macro_error::{proc_macro_error, abort};
 use quote::quote;
 use syn::{self, Fields, FieldsNamed, Ident, ItemImpl, ImplItem, Item};
 
-
+/// Apply the required features to an [`Action`] struct.
+/// 
+/// This method should be applied to BOTH the struct definition and the
+/// [`Action`] trait implementation. It will add the required fields and
+/// methods to the struct implementation.
+/// 
+/// [`Action`]: https://docs.rs/barley-runtime/latest/barley_runtime/trait.Action.html
 #[proc_macro_error]
 #[proc_macro_attribute]
 pub fn barley_action(_attr: TokenStream, input: TokenStream) -> TokenStream {

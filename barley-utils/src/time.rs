@@ -4,6 +4,11 @@ use async_trait::async_trait;
 use barley_runtime::*;
 
 
+/// A timer.
+/// 
+/// This action does not track whether the timer has
+/// already been run. See [this issue](https://github.com/panthios/barley/issues/1)
+/// for more information.
 #[barley_action]
 #[derive(Default)]
 pub struct Sleep {
@@ -11,6 +16,7 @@ pub struct Sleep {
 }
 
 impl Sleep {
+  /// Create a new `Sleep` action.
   pub fn new(duration: Duration) -> Self {
     Self { duration, ..Default::default() }
   }

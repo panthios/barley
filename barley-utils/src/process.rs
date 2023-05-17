@@ -3,6 +3,10 @@ use async_trait::async_trait;
 use barley_runtime::*;
 
 
+/// A command.
+/// 
+/// The output from the command is not captured, but the
+/// status code is processed as a success or failure.
 #[barley_action]
 #[derive(Default)]
 pub struct Process {
@@ -10,6 +14,7 @@ pub struct Process {
 }
 
 impl Process {
+  /// Create a new `Process` action.
   pub fn new(command: Vec<String>) -> Self {
     Self { command, ..Default::default() }
   }

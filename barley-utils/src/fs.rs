@@ -4,7 +4,10 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 use barley_runtime::*;
 
-
+/// A writable file.
+/// 
+/// The content written is fixed. This will
+/// be changed in the future.
 #[barley_action]
 #[derive(Default)]
 pub struct FileW {
@@ -13,6 +16,7 @@ pub struct FileW {
 }
 
 impl FileW {
+  /// Create a new `FileW` action.
   pub fn new(path: String, content: String) -> Self {
     Self { path, content, ..Default::default() }
   }
@@ -47,6 +51,10 @@ const ROOT_TEMP_DIR: &str = r"C:\Windows\Temp";
 #[cfg(target_os = "linux")]
 const ROOT_TEMP_DIR: &str = r"/tmp";
 
+/// A temporary file.
+///
+/// This file does not currently have any write
+/// access. This will be updated in the future.
 #[barley_action]
 #[derive(Default)]
 pub struct TempFile {
@@ -54,6 +62,7 @@ pub struct TempFile {
 }
 
 impl TempFile {
+  /// Create a new `TempFile` action.
   pub fn new(rel_path: String) -> Self {
     Self { rel_path, ..Default::default() }
   }

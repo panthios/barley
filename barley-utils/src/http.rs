@@ -2,7 +2,10 @@ use reqwest::get;
 use async_trait::async_trait;
 use barley_runtime::*;
 
-
+/// An HTTP GET request.
+/// 
+/// The data from the request is set in
+/// the `http_get__<url>` variable.
 #[barley_action]
 #[derive(Default)]
 pub struct HttpGet {
@@ -10,6 +13,7 @@ pub struct HttpGet {
 }
 
 impl HttpGet {
+  /// Create a new `HttpGet` action.
   pub fn new(url: String) -> Self {
     Self { url, ..Default::default() }
   }
