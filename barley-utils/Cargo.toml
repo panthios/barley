@@ -19,7 +19,6 @@ reqwest = { version = "0.11.17", optional = true }
 tokio = { version = "1.28.1", optional = true }
 
 [features]
-default = ["full"]
 full = ["time", "fs", "io", "http", "process"]
 tokio = ["dep:tokio"]
 reqwest = ["dep:reqwest", "tokio"]
