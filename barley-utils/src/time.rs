@@ -26,11 +26,16 @@ impl Sleep {
 #[async_trait]
 impl Action for Sleep {
   async fn check(&self, ctx: &mut Context) -> Result<bool> {
-    Ok(false)
+    if let Some(_) = ctx.get_local(self, "complete") {
+      Ok(true)
+    } else {
+      Ok(false)
+    }
   }
 
   async fn perform(&self, ctx: &mut Context) -> Result<()> {
     sleep(self.duration).await;
+    ctx.set_local(self, "complete", "");
     Ok(())
   }
 
