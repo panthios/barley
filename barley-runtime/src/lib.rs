@@ -14,6 +14,7 @@ pub trait Action: Send + Sync {
   async fn rollback(&self, ctx: &mut Context) -> Result<()>;
 
   fn id(&self) -> Id;
+  fn add_dep(&mut self, action: Arc<dyn Action>);
 }
 
 pub struct Context<'ctx> {
@@ -31,8 +32,10 @@ impl<'ctx> Context<'ctx> {
     }
   }
 
-  pub fn add_action<A: Action + 'ctx>(&mut self, action: A) {
-    self.actions.push_back(Arc::new(action));
+  pub fn add_action<A: Action + 'ctx>(&mut self, action: A) -> Arc<dyn Action + 'ctx> {
+    let action = Arc::new(action);
+    self.actions.push_back(action.clone());
+    action
   }
 
   pub async fn run(&mut self) -> Result<()> {

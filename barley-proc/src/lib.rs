@@ -181,6 +181,12 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
     }
   };
 
+  let add_dep = quote! {
+    fn add_dep(&mut self, action: std::sync::Arc<dyn barley_runtime::Action>) {
+      self.__barley_deps.push(action);
+    }
+  };
+
   // Sort the indices in reverse order so that we can remove them without
   // affecting the indices of the remaining items.
   let mut indices = vec![check_index, perform_index, rollback_index];
@@ -195,6 +201,7 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
   ast.items.push(syn::parse_quote!(#check_deps));
   ast.items.push(syn::parse_quote!(#id));
   ast.items.push(syn::parse_quote!(#rollback));
+  ast.items.push(syn::parse_quote!(#add_dep));
 
   let output = quote! {
     #ast

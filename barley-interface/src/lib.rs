@@ -1,5 +1,5 @@
 use barley_runtime::*;
-
+use std::sync::Arc;
 
 pub struct Interface<'me> {
     ctx: Context<'me>
@@ -18,8 +18,8 @@ impl<'me> Interface<'me> {
         }
     }
 
-    pub fn add_action<A: Action + 'me>(&mut self, action: A) {
-        self.ctx.add_action(action);
+    pub fn add_action<A: Action + 'me>(&mut self, action: A) -> Arc<dyn Action + 'me> {
+        self.ctx.add_action(action)
     }
 
     pub async fn run(&mut self) -> Result<()> {
