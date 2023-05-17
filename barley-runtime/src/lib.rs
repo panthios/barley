@@ -37,7 +37,7 @@ impl<'ctx> Context<'ctx> {
 
   pub async fn run(&mut self) -> Result<()> {
     while let Some(action) = self.actions.pop_front() {
-      if action.check(self).await? {
+      if !action.check(self).await? {
         if let Some(callback) = self.callbacks.on_action_started {
           callback(action.as_ref());
         }
