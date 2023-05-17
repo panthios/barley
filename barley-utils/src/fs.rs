@@ -33,3 +33,39 @@ impl Action for FileW {
     Ok(())
   }
 }
+
+
+#[cfg(target_os = "windows")]
+const ROOT_TEMP_DIR: &str = r"C:\Windows\Temp";
+#[cfg(target_os = "linux")]
+const ROOT_TEMP_DIR: &str = r"/tmp";
+
+#[barley_action]
+#[derive(Default)]
+pub struct TempFile {
+  rel_path: String
+}
+
+impl TempFile {
+  pub fn new(rel_path: String) -> Self {
+    Self { rel_path, ..Default::default() }
+  }
+}
+
+#[barley_action]
+#[async_trait]
+impl Action for TempFile {
+  async fn check(&self, ctx: &mut Context) -> Result<bool> {
+    let path = PathBuf::from(ROOT_TEMP_DIR).join(&self.rel_path);
+    Ok(path.exists())
+  }
+
+  async fn perform(&self, _ctx: &mut Context) -> Result<()> {
+    let path = PathBuf::from(ROOT_TEMP_DIR).join(&self.rel_path);
+
+    let mut file = TokioFile::create(&path).await?;
+    file.write_all(b"").await?;
+
+    Ok(())
+  }
+}
