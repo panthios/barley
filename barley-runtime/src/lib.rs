@@ -14,7 +14,7 @@ use async_trait::async_trait;
 pub use anyhow::{Result, Error};
 use std::sync::Arc;
 use std::collections::{VecDeque, HashMap};
-pub use uuid::Uuid as Id;
+use uuid::Uuid;
 
 pub use barley_proc::barley_action;
 
@@ -180,4 +180,20 @@ pub struct ContextCallbacks {
   pub on_action_finished: Option<fn(&dyn Action)>,
   /// Called when an action fails.
   pub on_action_failed: Option<fn(&dyn Action, &anyhow::Error)>
+}
+
+/// A unique identifier for an action.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Id(Uuid);
+
+impl Default for Id {
+  fn default() -> Self {
+    Self(Uuid::new_v4())
+  }
+}
+
+impl std::fmt::Display for Id {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    self.0.fmt(f)
+  }
 }
