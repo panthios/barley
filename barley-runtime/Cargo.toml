@@ -1,5 +1,12 @@
 [package]
 name = "barley-runtime"
+description = "The Barley runtime"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/panthios/barley"
+homepage = "https://github.com/panthios/barley"
+documentation = "https://docs.rs/barley-runtime"
+readme = "README.md"
+keywords = ["barley", "runtime", "context", "scripting"]
 version = "0.0.1"
 edition = "2021"
 

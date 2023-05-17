@@ -1,5 +1,12 @@
 [package]
 name = "barley-interface"
+description = "A runtime interface for Barley"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/panthios/barley"
+homepage = "https://github.com/panthios/barley"
+documentation = "https://docs.rs/barley-interface"
+readme = "README.md"
+keywords = ["barley", "runtime", "interface"]
 version = "0.0.1"
 edition = "2021"
 
