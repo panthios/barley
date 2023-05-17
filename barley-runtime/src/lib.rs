@@ -11,6 +11,7 @@ pub trait Action: Send + Sync {
   async fn check(&self, ctx: &mut Context) -> Result<bool>;
   async fn check_deps(&self, ctx: &mut Context) -> Result<bool>;
   async fn perform(&self, ctx: &mut Context) -> Result<()>;
+  async fn rollback(&self, ctx: &mut Context) -> Result<()>;
 
   fn id(&self) -> Id;
 }

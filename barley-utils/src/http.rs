@@ -30,4 +30,8 @@ impl Action for HttpGet {
 
     Ok(())
   }
+
+  async fn rollback(&self, ctx: &mut Context) -> Result<()> {
+    Ok(())
+  }
 }

@@ -32,6 +32,13 @@ impl Action for FileW {
 
     Ok(())
   }
+
+  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
+    let path = PathBuf::from(&self.path);
+    tokio::fs::remove_file(path).await?;
+
+    Ok(())
+  }
 }
 
 
@@ -65,6 +72,13 @@ impl Action for TempFile {
 
     let mut file = TokioFile::create(&path).await?;
     file.write_all(b"").await?;
+
+    Ok(())
+  }
+
+  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
+    let path = PathBuf::from(ROOT_TEMP_DIR).join(&self.rel_path);
+    tokio::fs::remove_file(path).await?;
 
     Ok(())
   }

@@ -27,4 +27,8 @@ impl Action for Sleep {
     sleep(self.duration).await;
     Ok(())
   }
+
+  async fn rollback(&self, ctx: &mut Context) -> Result<()> {
+    Ok(())
+  }
 }

@@ -84,9 +84,11 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
 
   let mut check = None;
   let mut perform = None;
+  let mut rollback = None;
 
   let mut check_index = None;
   let mut perform_index = None;
+  let mut rollback_index = None;
 
   for (index, item) in ast.items.iter().enumerate() {
     if let ImplItem::Fn(fn_) = item {
@@ -96,6 +98,9 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
       } else if fn_.sig.ident == "perform" {
         perform = Some(fn_);
         perform_index = Some(index);
+      } else if fn_.sig.ident == "rollback" {
+        rollback = Some(fn_);
+        rollback_index = Some(index);
       }
     }
   }
@@ -108,11 +113,17 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
     abort!(trait_.1, "Barley actions must implement the `perform` method");
   }
 
+  if rollback.is_none() {
+    abort!(trait_.1, "Barley actions must implement the `rollback` method");
+  }
+
   let check = check.unwrap();
   let perform = perform.unwrap();
+  let rollback = rollback.unwrap();
 
   let check_body = check.block.clone();
   let perform_body = perform.block.clone();
+  let rollback_body = rollback.block.clone();
 
   let check = quote! {
     async fn check(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<bool> {
@@ -138,6 +149,20 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
     }
   };
 
+  let rollback = quote! {
+    async fn rollback(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<()> {
+      let deps = self.__barley_deps.clone();
+
+      for dep in deps {
+        if dep.check(ctx).await? {
+          dep.rollback(ctx).await?;
+        }
+      }
+
+      #rollback_body
+    }
+  };
+
   let check_deps = quote! {
     async fn check_deps(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<bool> {
       for dep in self.__barley_deps.clone() {
@@ -156,18 +181,20 @@ fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
     }
   };
 
-  if check_index > perform_index {
-    ast.items.remove(check_index.unwrap());
-    ast.items.remove(perform_index.unwrap());
-  } else {
-    ast.items.remove(perform_index.unwrap());
-    ast.items.remove(check_index.unwrap());
+  // Sort the indices in reverse order so that we can remove them without
+  // affecting the indices of the remaining items.
+  let mut indices = vec![check_index, perform_index, rollback_index];
+  indices.sort_by(|a, b| b.cmp(a));
+
+  for index in indices {
+    ast.items.remove(index.unwrap());
   }
 
   ast.items.push(syn::parse_quote!(#check));
   ast.items.push(syn::parse_quote!(#perform));
   ast.items.push(syn::parse_quote!(#check_deps));
   ast.items.push(syn::parse_quote!(#id));
+  ast.items.push(syn::parse_quote!(#rollback));
 
   let output = quote! {
     #ast
