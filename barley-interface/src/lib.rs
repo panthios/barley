@@ -43,6 +43,26 @@ impl<'me> Interface<'me> {
         self.ctx.run().await
     }
 
+    /// Gets the output of the action.
+    /// 
+    /// This method will return `None` if the action
+    /// has not been run yet. See [`Context::get_output`]
+    /// for more information.
+    /// 
+    /// [`Context::get_output`]: https://docs.rs/barley-runtime/latest/barley_runtime/struct.Context.html#method.get_output
+    pub fn get_output(&self, action: &dyn Action) -> Option<&ActionOutput> {
+        self.ctx.get_output(action)
+    }
+
+    /// Gets the output of an action Arc.
+    /// 
+    /// See [`Context::get_output_arc`] for more information.
+    /// 
+    /// [`Context::get_output_arc`]: https://docs.rs/barley-runtime/latest/barley_runtime/struct.Context.html#method.get_output_arc
+    pub fn get_output_arc(&self, action: Arc<dyn Action + 'me>) -> Option<&ActionOutput> {
+        self.ctx.get_output_arc(action)
+    }
+
     pub(crate) fn on_action_started(action: &dyn Action) {
         println!("Started: {}", action.display_name());
     }

@@ -184,6 +184,27 @@ impl<'ctx> Context<'ctx> {
   pub fn get_local(&self, action: &dyn Action, name: &str) -> Option<&str> {
     self.get_variable(&format!("{}::{}", action.id(), name))
   }
+
+  /// Gets the output of the action.
+  /// 
+  /// If the action has not been run yet, this will return
+  /// `None`, regardless of the action's value after running
+  /// it. If you are using this outside of an action, you
+  /// should only use it after the context has been run.
+  pub fn get_output(&self, action: &dyn Action) -> Option<&ActionOutput> {
+    self.outputs.get(&action.id())
+  }
+
+  /// Gets the output of an action Arc
+  /// 
+  /// This should be used instead of [`Context::get_output`]
+  /// if you have an [`Arc`] to the action.
+  /// 
+  /// [`Context::get_output`]: struct.Context.html#method.get_output
+  /// [`Arc`]: https://doc.rust-lang.org/std/sync/struct.Arc.html
+  pub fn get_output_arc(&self, action: Arc<dyn Action + 'ctx>) -> Option<&ActionOutput> {
+    self.outputs.get(&action.id())
+  }
 }
 
 /// Callbacks for the context.

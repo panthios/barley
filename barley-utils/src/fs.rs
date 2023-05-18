@@ -26,13 +26,18 @@ impl FileW {
 #[async_trait]
 impl Action for FileW {
   async fn check(&self, ctx: &mut Context) -> Result<bool> {
-    let path = PathBuf::from(&self.path);
-    Ok(path.exists())
+    if let Some(_) = ctx.get_local(self, "written") {
+      return Ok(true);
+    } else {
+      return Ok(false);
+    }
   }
 
-  async fn perform(&self, _ctx: &mut Context) -> Result<Option<ActionOutput>> {
+  async fn perform(&self, ctx: &mut Context) -> Result<Option<ActionOutput>> {
     let mut file = TokioFile::create(&self.path).await?;
     file.write_all(self.content.as_bytes()).await?;
+
+    ctx.set_local(self, "written", "");
 
     Ok(None)
   }
@@ -103,5 +108,50 @@ impl Action for TempFile {
 
   fn display_name(&self) -> String {
     format!("Create temporary file \"{}\"", self.rel_path)
+  }
+}
+
+/// A readable file.
+#[barley_action]
+#[derive(Default)]
+pub struct FileR {
+  path: String
+}
+
+impl FileR {
+  /// Create a new `FileR` action.
+  pub fn new(path: String) -> Self {
+    Self { path, ..Default::default() }
+  }
+}
+
+#[barley_action]
+#[async_trait]
+impl Action for FileR {
+  async fn check(&self, ctx: &mut Context) -> Result<bool> {
+    if let Some(output) = ctx.get_output(self) {
+      if let ActionOutput::String(_) = output {
+        return Ok(true);
+      } else {
+        return Ok(false);
+      }
+    } else {
+      return Ok(false);
+    }
+  }
+
+  async fn perform(&self, _ctx: &mut Context) -> Result<Option<ActionOutput>> {
+    let path = PathBuf::from(&self.path);
+    let content = tokio::fs::read_to_string(path).await?;
+
+    Ok(Some(ActionOutput::String(content)))
+  }
+
+  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
+    Ok(())
+  }
+
+  fn display_name(&self) -> String {
+    format!("Read data from \"{}\"", self.path)
   }
 }
