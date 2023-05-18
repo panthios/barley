@@ -9,6 +9,7 @@
 
 use barley_runtime::*;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use colored::*;
 
 /// A simple CLI interface for the `barley` workflow engine.
@@ -16,11 +17,11 @@ use colored::*;
 /// This interface is not yet complete, but should be used instead
 /// of the [`Context`] struct from the `barley-runtime` crate,
 /// since it will require no extra modifications when stable.
-pub struct Interface<'me> {
-    ctx: Context<'me>
+pub struct Interface {
+    ctx: Arc<RwLock<Context>>
 }
 
-impl<'me> Interface<'me> {
+impl Interface {
     /// Create a new `Interface`.
     pub fn new() -> Self {
         let callbacks = ContextCallbacks {
@@ -35,13 +36,13 @@ impl<'me> Interface<'me> {
     }
 
     /// Add an action to the context.
-    pub fn add_action<A: Action + 'me>(&mut self, action: A) -> Arc<dyn Action + 'me> {
-        self.ctx.add_action(action)
+    pub async fn add_action<A: Action + 'static>(&self, action: A) -> Arc<dyn Action + 'static> {
+        self.ctx.clone().add_action(action).await
     }
 
     /// Run the context.
-    pub async fn run(&mut self) -> Result<()> {
-        self.ctx.run().await
+    pub async fn run(&self) -> Result<()> {
+        self.ctx.clone().run().await
     }
 
     /// Gets the output of the action.
@@ -51,8 +52,8 @@ impl<'me> Interface<'me> {
     /// for more information.
     /// 
     /// [`Context::get_output`]: https://docs.rs/barley-runtime/latest/barley_runtime/struct.Context.html#method.get_output
-    pub fn get_output(&self, action: &dyn Action) -> Option<&ActionOutput> {
-        self.ctx.get_output(action)
+    pub async fn get_output(&self, action: &dyn Action) -> Option<ActionOutput> {
+        self.ctx.clone().get_output(action).await
     }
 
     /// Gets the output of an action Arc.
@@ -60,8 +61,8 @@ impl<'me> Interface<'me> {
     /// See [`Context::get_output_arc`] for more information.
     /// 
     /// [`Context::get_output_arc`]: https://docs.rs/barley-runtime/latest/barley_runtime/struct.Context.html#method.get_output_arc
-    pub fn get_output_arc(&self, action: Arc<dyn Action + 'me>) -> Option<&ActionOutput> {
-        self.ctx.get_output_arc(action)
+    pub async fn get_output_arc(&self, action: Arc<dyn Action + 'static>) -> Option<ActionOutput> {
+        self.ctx.clone().get_output_arc(action).await
     }
 
     pub(crate) fn on_action_started(action: &dyn Action) {

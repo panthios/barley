@@ -1,6 +1,8 @@
 use async_process::Command;
 use async_trait::async_trait;
 use barley_runtime::*;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 
 /// A command.
@@ -23,29 +25,29 @@ impl Process {
 #[barley_action]
 #[async_trait]
 impl Action for Process {
-  async fn check(&self, ctx: &mut Context) -> Result<bool> {
-    if let Some(_) = ctx.get_local(self, "complete") {
+  async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
+    if let Some(_) = ctx.get_local(self, "complete").await {
       Ok(true)
     } else {
       Ok(false)
     }
   }
 
-  async fn perform(&self, ctx: &mut Context) -> Result<Option<ActionOutput>> {
+  async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
     let mut command = Command::new(&self.command[0]);
     command.args(&self.command[1..]);
 
     let output = command.output().await?;
 
     if output.status.success() {
-      ctx.set_local(self, "complete", "");
+      ctx.set_local(self, "complete", "").await;
       Ok(None)
     } else {
       Err(anyhow::anyhow!("Process failed"))
     }
   }
 
-  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
+  async fn rollback(&self, _ctx: Arc<RwLock<Context>>) -> Result<()> {
     Ok(())
   }
 

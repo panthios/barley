@@ -63,7 +63,7 @@ fn revise_check(func: &mut ImplItemFn) {
     {
       let __barley_deps = self.__barley_deps.clone();
       for dep in __barley_deps.iter() {
-        if !dep.check(#ctx_name).await? {
+        if !dep.check(#ctx_name.clone()).await? {
           return Ok(false);
         }
       }
@@ -92,7 +92,7 @@ fn revise_perform(func: &mut ImplItemFn) {
     {
       let __barley_deps = self.__barley_deps.clone();
       for dep in __barley_deps.iter() {
-        #ctx_name.run_action(dep.clone()).await?;
+        #ctx_name.clone().run_action(dep.clone()).await?;
       }
     }
   };
@@ -148,11 +148,11 @@ fn check_ctx(func: &ImplItemFn) -> Option<Ident> {
 
 pub fn add_funcs(ast: &mut ItemImpl) {
   let check_deps: ImplItemFn = syn::parse_quote! {
-    async fn check_deps(&self, ctx: &mut barley_runtime::Context) -> Result<bool> {
+    async fn check_deps(&self, ctx: std::sync::Arc<tokio::sync::RwLock<barley_runtime::Context>>) -> Result<bool> {
       let __barley_deps = self.__barley_deps.clone();
 
       for dep in __barley_deps.iter() {
-        if !dep.check(ctx).await? {
+        if !dep.check(ctx.clone()).await? {
           return Ok(false);
         }
       }

@@ -1,5 +1,7 @@
 use tokio::fs::File as TokioFile;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::RwLock;
+use std::sync::Arc;
 use async_trait::async_trait;
 use std::path::PathBuf;
 use barley_runtime::*;
@@ -25,24 +27,24 @@ impl FileW {
 #[barley_action]
 #[async_trait]
 impl Action for FileW {
-  async fn check(&self, ctx: &mut Context) -> Result<bool> {
-    if let Some(_) = ctx.get_local(self, "written") {
+  async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
+    if let Some(_) = ctx.get_local(self, "written").await {
       return Ok(true);
     } else {
       return Ok(false);
     }
   }
 
-  async fn perform(&self, ctx: &mut Context) -> Result<Option<ActionOutput>> {
+  async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
     let mut file = TokioFile::create(&self.path).await?;
     file.write_all(self.content.as_bytes()).await?;
 
-    ctx.set_local(self, "written", "");
+    ctx.set_local(self, "written", "").await;
 
     Ok(None)
   }
 
-  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
+  async fn rollback(&self, _ctx: Arc<RwLock<Context>>) -> Result<()> {
     let path = PathBuf::from(&self.path);
     tokio::fs::remove_file(path).await?;
 
@@ -85,12 +87,12 @@ impl TempFile {
 #[barley_action]
 #[async_trait]
 impl Action for TempFile {
-  async fn check(&self, ctx: &mut Context) -> Result<bool> {
+  async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
     let path = PathBuf::from(ROOT_TEMP_DIR).join(&self.rel_path);
     Ok(path.exists())
   }
 
-  async fn perform(&self, _ctx: &mut Context) -> Result<Option<ActionOutput>> {
+  async fn perform(&self, _ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
     let path = PathBuf::from(ROOT_TEMP_DIR).join(&self.rel_path);
 
     let mut file = TokioFile::create(&path).await?;
@@ -99,7 +101,7 @@ impl Action for TempFile {
     Ok(None)
   }
 
-  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
+  async fn rollback(&self, _ctx: Arc<RwLock<Context>>) -> Result<()> {
     let path = PathBuf::from(ROOT_TEMP_DIR).join(&self.rel_path);
     tokio::fs::remove_file(path).await?;
 
@@ -128,8 +130,8 @@ impl FileR {
 #[barley_action]
 #[async_trait]
 impl Action for FileR {
-  async fn check(&self, ctx: &mut Context) -> Result<bool> {
-    if let Some(output) = ctx.get_output(self) {
+  async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
+    if let Some(output) = ctx.get_output(self).await {
       if let ActionOutput::String(_) = output {
         return Ok(true);
       } else {
@@ -140,14 +142,14 @@ impl Action for FileR {
     }
   }
 
-  async fn perform(&self, _ctx: &mut Context) -> Result<Option<ActionOutput>> {
+  async fn perform(&self, _ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
     let path = PathBuf::from(&self.path);
     let content = tokio::fs::read_to_string(path).await?;
 
     Ok(Some(ActionOutput::String(content)))
   }
 
-  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
+  async fn rollback(&self, _ctx: Arc<RwLock<Context>>) -> Result<()> {
     Ok(())
   }
 

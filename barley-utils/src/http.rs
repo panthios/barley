@@ -1,6 +1,8 @@
 use reqwest::get;
 use async_trait::async_trait;
 use barley_runtime::*;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// An HTTP GET request.
 /// 
@@ -22,24 +24,24 @@ impl HttpGet {
 #[barley_action]
 #[async_trait]
 impl Action for HttpGet {
-  async fn check(&self, ctx: &mut Context) -> Result<bool> {
+  async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
     let var_name = format!("http_get__{}", self.url);
 
-    if let Some(_) = ctx.get_variable(&var_name) {
+    if let Some(_) = ctx.get_variable(&var_name).await {
       return Ok(true);
     }
 
     Ok(false)
   }
 
-  async fn perform(&self, ctx: &mut Context) -> Result<Option<ActionOutput>> {
+  async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
     let res = get(&self.url).await?;
     let body = res.text().await?;
 
     Ok(Some(ActionOutput::String(body)))
   }
 
-  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
+  async fn rollback(&self, _ctx: Arc<RwLock<Context>>) -> Result<()> {
     Ok(())
   }
 

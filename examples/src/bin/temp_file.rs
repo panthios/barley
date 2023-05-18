@@ -5,7 +5,7 @@ use barley_utils::fs::{FileW, FileR, TempFile};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-  let mut interface = Interface::new();
+  let interface = Interface::new();
 
   let temp_file = TempFile::new("temp_file_test".to_string());
   let path = temp_file.path().to_str().unwrap().to_string();
@@ -13,14 +13,14 @@ async fn main() -> Result<()> {
   let mut write = FileW::new(path.clone(), "Hello, world!".to_string());
   let mut read = FileR::new(path.clone());
 
-  write.add_dep(interface.add_action(temp_file));
-  read.add_dep(interface.add_action(write));
+  write.add_dep(interface.add_action(temp_file).await);
+  read.add_dep(interface.add_action(write).await);
   
-  let read = interface.add_action(read);
+  let read = interface.add_action(read).await;
 
   interface.run().await?;
 
-  let output = interface.get_output_arc(read).unwrap();
+  let output = interface.get_output_arc(read).await.unwrap();
 
   if let ActionOutput::String(content) = output {
     assert_eq!(content, "Hello, world!");

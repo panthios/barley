@@ -2,6 +2,8 @@ use tokio::time::sleep;
 pub use tokio::time::Duration;
 use async_trait::async_trait;
 use barley_runtime::*;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 
 /// A timer.
@@ -25,22 +27,22 @@ impl Sleep {
 #[barley_action]
 #[async_trait]
 impl Action for Sleep {
-  async fn check(&self, ctx: &mut Context) -> Result<bool> {
-    if let Some(_) = ctx.get_local(self, "complete") {
+  async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
+    if let Some(_) = ctx.get_local(self, "complete").await {
       Ok(true)
     } else {
       Ok(false)
     }
   }
 
-  async fn perform(&self, ctx: &mut Context) -> Result<Option<ActionOutput>> {
+  async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
     sleep(self.duration).await;
-    ctx.set_local(self, "complete", "");
+    ctx.set_local(self, "complete", "").await;
 
     Ok(None)
   }
 
-  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
+  async fn rollback(&self, _ctx: Arc<RwLock<Context>>) -> Result<()> {
     Ok(())
   }
 

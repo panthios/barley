@@ -5,11 +5,11 @@ use barley_utils::time::{Duration, Sleep};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut interface = Interface::new();
+    let interface = Interface::new();
 
-    interface.add_action(Sleep::new(Duration::from_secs(1)));
-    interface.add_action(Sleep::new(Duration::from_secs(2)));
-    interface.add_action(Sleep::new(Duration::from_secs(3)));
+    interface.add_action(Sleep::new(Duration::from_secs(1))).await;
+    interface.add_action(Sleep::new(Duration::from_secs(2))).await;
+    interface.add_action(Sleep::new(Duration::from_secs(3))).await;
 
     interface.run().await
 }
