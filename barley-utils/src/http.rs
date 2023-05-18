@@ -32,15 +32,11 @@ impl Action for HttpGet {
     Ok(false)
   }
 
-  async fn perform(&self, ctx: &mut Context) -> Result<()> {
+  async fn perform(&self, ctx: &mut Context) -> Result<Option<ActionOutput>> {
     let res = get(&self.url).await?;
     let body = res.text().await?;
 
-    let var_name = format!("http_get__{}", self.url);
-
-    ctx.set_variable(&var_name, &body);
-
-    Ok(())
+    Ok(Some(ActionOutput::String(body)))
   }
 
   async fn rollback(&self, _ctx: &mut Context) -> Result<()> {

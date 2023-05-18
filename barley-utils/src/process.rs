@@ -31,7 +31,7 @@ impl Action for Process {
     }
   }
 
-  async fn perform(&self, ctx: &mut Context) -> Result<()> {
+  async fn perform(&self, ctx: &mut Context) -> Result<Option<ActionOutput>> {
     let mut command = Command::new(&self.command[0]);
     command.args(&self.command[1..]);
 
@@ -39,7 +39,7 @@ impl Action for Process {
 
     if output.status.success() {
       ctx.set_local(self, "complete", "");
-      Ok(())
+      Ok(None)
     } else {
       Err(anyhow::anyhow!("Process failed"))
     }

@@ -33,10 +33,11 @@ impl Action for Sleep {
     }
   }
 
-  async fn perform(&self, ctx: &mut Context) -> Result<()> {
+  async fn perform(&self, ctx: &mut Context) -> Result<Option<ActionOutput>> {
     sleep(self.duration).await;
     ctx.set_local(self, "complete", "");
-    Ok(())
+
+    Ok(None)
   }
 
   async fn rollback(&self, _ctx: &mut Context) -> Result<()> {

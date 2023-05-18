@@ -30,11 +30,11 @@ impl Action for FileW {
     Ok(path.exists())
   }
 
-  async fn perform(&self, _ctx: &mut Context) -> Result<()> {
+  async fn perform(&self, _ctx: &mut Context) -> Result<Option<ActionOutput>> {
     let mut file = TokioFile::create(&self.path).await?;
     file.write_all(self.content.as_bytes()).await?;
 
-    Ok(())
+    Ok(None)
   }
 
   async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
@@ -80,13 +80,13 @@ impl Action for TempFile {
     Ok(path.exists())
   }
 
-  async fn perform(&self, _ctx: &mut Context) -> Result<()> {
+  async fn perform(&self, _ctx: &mut Context) -> Result<Option<ActionOutput>> {
     let path = PathBuf::from(ROOT_TEMP_DIR).join(&self.rel_path);
 
     let mut file = TokioFile::create(&path).await?;
     file.write_all(b"").await?;
 
-    Ok(())
+    Ok(None)
   }
 
   async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
