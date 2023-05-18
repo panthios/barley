@@ -70,6 +70,11 @@ impl TempFile {
   pub fn new(rel_path: String) -> Self {
     Self { rel_path, ..Default::default() }
   }
+
+  /// Get the path of the temporary file.
+  pub fn path(&self) -> PathBuf {
+    PathBuf::from(ROOT_TEMP_DIR).join(&self.rel_path)
+  }
 }
 
 #[barley_action]
