@@ -9,6 +9,7 @@
 
 use barley_runtime::*;
 use std::sync::Arc;
+use colored::*;
 
 /// A simple CLI interface for the `barley` workflow engine.
 /// 
@@ -64,14 +65,14 @@ impl<'me> Interface<'me> {
     }
 
     pub(crate) fn on_action_started(action: &dyn Action) {
-        println!("Started: {}", action.display_name());
+        println!("{} {}", "[STARTED]".yellow() ,action.display_name());
     }
 
     pub(crate) fn on_action_finished(action: &dyn Action) {
-        println!("Finished: {}", action.display_name());
+        println!("{} {}", "[FINISHED]".green(), action.display_name());
     }
 
     pub(crate) fn on_action_failed(action: &dyn Action, _err: &Error) {
-        println!("Failed: {}", action.display_name());
+        println!("{} {}", "[FAILED]".red(), action.display_name());
     }
 }

@@ -13,6 +13,7 @@ edition = "2021"
 [dependencies]
 barley-runtime = { version = "0.0.1", path = "../barley-runtime" }
 indicatif = "0.17.3"
+colored = "2"
 
 [dev-dependencies]
 barley-utils = { version = "0.0.1", features = ["full"], path = "../barley-utils" }
