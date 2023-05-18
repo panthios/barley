@@ -92,9 +92,7 @@ fn revise_perform(func: &mut ImplItemFn) {
     {
       let __barley_deps = self.__barley_deps.clone();
       for dep in __barley_deps.iter() {
-        if !dep.check(#ctx_name).await? {
-          dep.perform(#ctx_name).await?;
-        }
+        #ctx_name.run_action(dep.clone()).await?;
       }
     }
   };

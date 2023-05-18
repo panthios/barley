@@ -68,7 +68,8 @@ pub trait Action: Send + Sync {
 pub struct Context<'ctx> {
   actions: VecDeque<Arc<dyn Action + 'ctx>>,
   variables: HashMap<String, String>,
-  callbacks: ContextCallbacks
+  callbacks: ContextCallbacks,
+  outputs: HashMap<Id, ActionOutput>
 }
 
 impl<'ctx> Context<'ctx> {
@@ -82,7 +83,8 @@ impl<'ctx> Context<'ctx> {
     Self {
       actions: VecDeque::new(),
       variables: HashMap::new(),
-      callbacks
+      callbacks,
+      outputs: HashMap::new()
     }
   }
 
@@ -106,29 +108,42 @@ impl<'ctx> Context<'ctx> {
   /// call the callbacks if they are set.
   pub async fn run(&mut self) -> Result<()> {
     while let Some(action) = self.actions.pop_front() {
-      if !action.check(self).await? {
-        if let Some(callback) = self.callbacks.on_action_started {
-          callback(action.as_ref());
-        }
-
-        match action.perform(self).await {
-          Ok(_) => {
-            if let Some(callback) = self.callbacks.on_action_finished {
-              callback(action.as_ref());
-            }
-          },
-          Err(err) => {
-            if let Some(callback) = self.callbacks.on_action_failed {
-              callback(action.as_ref(), &err);
-            }
-
-            action.rollback(self).await?;
-          }
-        }
+      if !action.check_deps(self).await? {
+        self.actions.push_back(action);
+      } else {
+        self.run_action(action).await?;
       }
     }
 
     Ok(())
+  }
+
+  /// Run an individual action.
+  /// 
+  /// This should be used by actions to run their
+  /// dependencies. It will sync any outputs with
+  /// the context.
+  pub async fn run_action(&mut self, action: Arc<dyn Action + 'ctx>) -> Result<Option<ActionOutput>> {
+    if !action.check(self).await? {
+      if let Some(callback) = self.callbacks.on_action_started {
+        callback(action.as_ref());
+      }
+
+      let output = action.perform(self).await?;
+
+      if let Some(callback) = self.callbacks.on_action_finished {
+        callback(action.as_ref());
+      }
+
+      if let Some(output) = output {
+        self.outputs.insert(action.id(), output.clone());
+        Ok(Some(output))
+      } else {
+        Ok(None)
+      }
+    } else {
+      Ok(self.outputs.get(&action.id()).cloned())
+    }
   }
 
   /// Sets a variable in the context.
