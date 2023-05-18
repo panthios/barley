@@ -45,7 +45,7 @@ impl Action for Process {
     }
   }
 
-  async fn rollback(&self, ctx: &mut Context) -> Result<()> {
+  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
     Ok(())
   }
 

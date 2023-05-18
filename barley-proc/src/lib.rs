@@ -12,7 +12,10 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use proc_macro_error::{proc_macro_error, abort};
 use quote::quote;
-use syn::{self, Fields, FieldsNamed, Ident, ItemImpl, ImplItem, Item};
+use syn::{self, Fields, FieldsNamed, Ident, ItemImpl, Item};
+
+mod utils;
+mod assert;
 
 /// Apply the required features to an [`Action`] struct.
 /// 
@@ -95,128 +98,8 @@ fn process_named_fields(fields: &mut FieldsNamed) {
 }
 
 fn barley_action_impl(mut ast: ItemImpl) -> TokenStream {
-  let trait_ = ast.trait_.clone().unwrap();
-
-  let mut check = None;
-  let mut perform = None;
-  let mut rollback = None;
-
-  let mut check_index = None;
-  let mut perform_index = None;
-  let mut rollback_index = None;
-
-  for (index, item) in ast.items.iter().enumerate() {
-    if let ImplItem::Fn(fn_) = item {
-      if fn_.sig.ident == "check" {
-        check = Some(fn_);
-        check_index = Some(index);
-      } else if fn_.sig.ident == "perform" {
-        perform = Some(fn_);
-        perform_index = Some(index);
-      } else if fn_.sig.ident == "rollback" {
-        rollback = Some(fn_);
-        rollback_index = Some(index);
-      }
-    }
-  }
-
-  if check.is_none() {
-    abort!(trait_.1, "Barley actions must implement the `check` method");
-  }
-
-  if perform.is_none() {
-    abort!(trait_.1, "Barley actions must implement the `perform` method");
-  }
-
-  if rollback.is_none() {
-    abort!(trait_.1, "Barley actions must implement the `rollback` method");
-  }
-
-  let check = check.unwrap();
-  let perform = perform.unwrap();
-  let rollback = rollback.unwrap();
-
-  let check_body = check.block.clone();
-  let perform_body = perform.block.clone();
-  let rollback_body = rollback.block.clone();
-
-  let check = quote! {
-    async fn check(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<bool> {
-      if !self.check_deps(ctx).await? {
-        return Ok(false);
-      }
-
-      #check_body
-    }
-  };
-
-  let perform = quote! {
-    async fn perform(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<()> {
-      let deps = self.__barley_deps.clone();
-
-      for dep in deps {
-        if !dep.check(ctx).await? {
-          dep.perform(ctx).await?;
-        }
-      }
-
-      #perform_body
-    }
-  };
-
-  let rollback = quote! {
-    async fn rollback(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<()> {
-      let deps = self.__barley_deps.clone();
-
-      for dep in deps {
-        if dep.check(ctx).await? {
-          dep.rollback(ctx).await?;
-        }
-      }
-
-      #rollback_body
-    }
-  };
-
-  let check_deps = quote! {
-    async fn check_deps(&self, ctx: &mut barley_runtime::Context) -> barley_runtime::Result<bool> {
-      for dep in self.__barley_deps.clone() {
-        if !dep.check(ctx).await? {
-          return Ok(false);
-        }
-      }
-
-      Ok(true)
-    }
-  };
-
-  let id = quote! {
-    fn id(&self) -> barley_runtime::Id {
-      self.__barley_id
-    }
-  };
-
-  let add_dep = quote! {
-    fn add_dep(&mut self, action: std::sync::Arc<dyn barley_runtime::Action>) {
-      self.__barley_deps.push(action);
-    }
-  };
-
-  // Sort the indices in reverse order so that we can remove them without
-  // affecting the indices of the remaining items.
-  let mut indices = vec![check_index, perform_index, rollback_index];
-  indices.sort_by(|a, b| b.cmp(a));
-
-  for index in indices {
-    ast.items.remove(index.unwrap());
-  }
-
-  ast.items.push(syn::parse_quote!(#check));
-  ast.items.push(syn::parse_quote!(#perform));
-  ast.items.push(syn::parse_quote!(#check_deps));
-  ast.items.push(syn::parse_quote!(#id));
-  ast.items.push(syn::parse_quote!(#rollback));
-  ast.items.push(syn::parse_quote!(#add_dep));
+  utils::replace_funcs(&mut ast);
+  utils::add_funcs(&mut ast);
 
   let output = quote! {
     #ast

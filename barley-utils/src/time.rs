@@ -39,7 +39,7 @@ impl Action for Sleep {
     Ok(())
   }
 
-  async fn rollback(&self, ctx: &mut Context) -> Result<()> {
+  async fn rollback(&self, _ctx: &mut Context) -> Result<()> {
     Ok(())
   }
 
