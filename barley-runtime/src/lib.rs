@@ -64,6 +64,13 @@ pub trait Action: Send + Sync {
 
   /// Get the display name of the action.
   fn display_name(&self) -> String;
+
+  /// Get a list of dependencies.
+  /// 
+  /// This method is used internally, and should not
+  /// be called directly. Dependencies are automatically
+  /// handled by the engine.
+  fn deps(&self) -> Vec<Arc<dyn Action>>;
 }
 
 /// A context for running actions.
