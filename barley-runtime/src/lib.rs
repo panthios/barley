@@ -50,6 +50,10 @@ pub trait Action: Send + Sync {
   async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>>;
 
   /// Undo the action.
+  /// 
+  /// This is not currently possible, and will not
+  /// do anything. This will be usable in a future
+  /// version of Barley.
   async fn rollback(&self, ctx: Arc<RwLock<Context>>) -> Result<()>;
 
   /// Get the action's ID.
@@ -180,6 +184,8 @@ impl ContextAbstract for Arc<RwLock<Context>> {
   }
 
   async fn run(self) -> Result<()> {
+    let mut join_handles = Vec::new();
+
     loop {
       let action = match self.clone().write().await.actions.pop_front() {
         Some(action) => action,
@@ -191,7 +197,14 @@ impl ContextAbstract for Arc<RwLock<Context>> {
         continue;
       }
 
-      self.clone().run_action(action.clone()).await?;
+      let spawned_self = self.clone();
+      join_handles.push(tokio::spawn(async move {
+        spawned_self.clone().run_action(action).await
+      }));
+    }
+
+    for join_handle in join_handles {
+      join_handle.await??;
     }
 
     Ok(())

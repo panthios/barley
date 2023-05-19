@@ -52,6 +52,6 @@ impl Action for Process {
   }
 
   fn display_name(&self) -> String {
-    format!("Shell: {}", &self.command[0])
+    format!("Shell: {}", &self.command.join(" "))
   }
 }
