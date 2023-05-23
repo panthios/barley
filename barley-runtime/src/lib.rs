@@ -13,9 +13,10 @@
 use async_trait::async_trait;
 pub use anyhow::{Result, Error};
 use std::sync::Arc;
-use tokio::sync::RwLock;
-use std::collections::{VecDeque, HashMap};
+use tokio::sync::{RwLock, Barrier};
+use std::collections::HashMap;
 use uuid::Uuid;
+use futures::future::join_all;
 
 pub use barley_proc::barley_action;
 
@@ -78,10 +79,11 @@ pub trait Action: Send + Sync {
 /// There should only be one of these per workflow
 #[derive(Default)]
 pub struct Context {
-  actions: VecDeque<Arc<dyn Action + 'static>>,
+  actions: Vec<Arc<dyn Action + 'static>>,
   variables: HashMap<String, String>,
   callbacks: ContextCallbacks,
-  outputs: HashMap<Id, ActionOutput>
+  outputs: HashMap<Id, ActionOutput>,
+  barriers: HashMap<Id, Arc<Barrier>>
 }
 
 /// The abstract interface for a context.
@@ -172,10 +174,11 @@ impl Context {
   /// [`Default`]: https://doc.rust-lang.org/std/default/trait.Default.html
   pub fn new(callbacks: ContextCallbacks) -> Arc<RwLock<Self>> {
     Arc::new(RwLock::new(Self {
-      actions: VecDeque::new(),
+      actions: Vec::new(),
       variables: HashMap::new(),
       callbacks,
-      outputs: HashMap::new()
+      outputs: HashMap::new(),
+      barriers: HashMap::new()
     }))
   }
 }
@@ -185,33 +188,76 @@ impl ContextAbstract for Arc<RwLock<Context>> {
   async fn add_action<A: Action + 'static>(self, action: A) -> Arc<dyn Action> {
     let action = Arc::new(action);
 
-    self.write().await.actions.push_back(action.clone());
+    self.write().await.actions.push(action.clone());
 
     action
   }
 
   async fn run(self) -> Result<()> {
-    let mut join_handles = Vec::new();
+    let mut actions = self.read().await.actions.clone();
+    let mut dependents: HashMap<Id, usize> = HashMap::new();
 
-    loop {
-      let action = match self.clone().write().await.actions.pop_front() {
-        Some(action) => action,
-        None => break
-      };
+    for action in actions.clone() {
+      dependents.insert(action.id(), 0);
 
-      if !action.check_deps(self.clone()).await? {
-        self.write().await.actions.push_back(action);
-        continue;
+      let deps = action.clone().deps()
+        .iter().map(|a| a.id()).collect::<Vec<_>>();
+
+      for dep in deps {
+        dependents.insert(dep, dependents.get(&dep).unwrap_or(&0) + 1);
       }
-
-      let spawned_self = self.clone();
-      join_handles.push(tokio::spawn(async move {
-        spawned_self.clone().run_action(action).await
-      }));
     }
 
-    for join_handle in join_handles {
-      join_handle.await??;
+    for (id, revdeps) in dependents.clone() {
+      if revdeps == 0 {
+        continue
+      }
+
+      self.clone().write().await
+        .barriers.insert(id, Arc::new(Barrier::new(revdeps + 1)));
+    }
+
+    actions.sort_by(|a, b| {
+      let a_revdeps = dependents.get(&a.id()).unwrap_or(&0);
+      let b_revdeps = dependents.get(&b.id()).unwrap_or(&0);
+
+      a_revdeps.cmp(b_revdeps)
+    });
+
+    let mut handles = Vec::new();
+    for action in actions {
+      let ctx = self.clone();
+      let action = action.clone();
+
+      let dep_ids = action.clone().deps()
+        .iter().map(|a| a.id()).collect::<Vec<_>>();
+      let barriers = ctx.clone().read().await.barriers.clone();
+      let dep_barriers = dep_ids.iter()
+        .map(|id| barriers.get(id).unwrap().clone())
+        .collect::<Vec<_>>();
+      let self_barrier = barriers.get(&action.id()).cloned();
+
+      handles.push(tokio::spawn(async move {
+        for barrier in dep_barriers {
+          barrier.wait().await;
+        }
+
+        let res = ctx.run_action(action).await;
+
+        if let Some(barrier) = self_barrier {
+          barrier.wait().await;
+        }
+
+        res
+      }))
+    }
+
+    let results = join_all(handles).await;
+
+    for result in results {
+      if let Err(e) = result? {
+        return Err(e)
+      }
     }
 
     Ok(())
