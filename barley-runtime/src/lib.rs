@@ -90,7 +90,8 @@ pub struct Context {
 /// 
 /// This should always be used in any program using
 /// Barley, but it should never be implemented
-/// directly.
+/// directly. Use the `barley-interface` crate
+/// instead.
 #[async_trait]
 pub trait ContextAbstract {
   /// Add an action to the context.
@@ -111,9 +112,10 @@ pub trait ContextAbstract {
 
   /// Run an individual action.
   /// 
-  /// This should be used by actions to run their
-  /// dependencies. It will sync any outputs with
-  /// the context.
+  /// This is called internally, and should not
+  /// be called directly. It is used to run
+  /// individual actions, and to check if their
+  /// outputs are available and successful.
   async fn run_action(self, action: Arc<dyn Action>) -> Result<Option<ActionOutput>>;
 
   /// Sets a variable in the context.

@@ -6,17 +6,4 @@ This crate provides the runtime for the barley workflow engine. It is responsibl
 
 ## Usage
 
-```rust
-use barley_runtime::*;
-use barley_utils::time::{Sleep, Duration};
-
-#[tokio::main]
-async fn main() -> Result<()> {
-  let mut ctx = Context::new();
-  let sleep = Sleep::new(Duration::from_secs(1));
-
-  ctx.add_action(sleep);
-
-  ctx.run().await
-}
-```
+See the [barley-interface](https://crates.io/crates/barley-interface) crate for an example of how to use `barley-runtime`.

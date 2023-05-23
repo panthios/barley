@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
   let mut interface = Interface::new();
   let sleep = Sleep::new(Duration::from_secs(1));
 
-  interface.add_action(sleep);
+  interface.add_action(sleep).await;
 
   interface.run().await
 }

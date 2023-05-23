@@ -4,4 +4,4 @@ This crate provides various utilities for the barley workflow engine. It is not 
 
 `barley-utils` is not stable. It is available as a pre-release for testing purposes.
 
-See the [`barley-runtime` crate](https://crates.io/crates/barley-runtime) for an example of how to use this crate.
+See the [`barley-interface` crate](https://crates.io/crates/barley-runtime) for an example of how to use this crate.
