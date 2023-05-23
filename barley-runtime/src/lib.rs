@@ -273,13 +273,21 @@ impl ContextAbstract for Arc<RwLock<Context>> {
         callback(action.as_ref());
       }
 
-      let output = action.perform(self.clone()).await?;
+      let output = action.perform(self.clone()).await;
+
+      if let Err(e) = &output {
+        if let Some(callback) = callbacks.on_action_failed {
+          callback(action.as_ref(), &e);
+        }
+
+        return output
+      }
 
       if let Some(callback) = callbacks.on_action_finished {
         callback(action.as_ref());
       }
 
-      if let Some(output) = output {
+      if let Some(output) = output.unwrap() {
         self.clone().write().await.outputs.insert(action.id(), output.clone());
         Ok(Some(output))
       } else {

@@ -70,6 +70,6 @@ impl Action for Join {
   }
 
   fn display_name(&self) -> String {
-    "Join".to_string()
+    "".to_string()
   }
 }

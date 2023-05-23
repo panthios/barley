@@ -66,14 +66,29 @@ impl Interface {
     }
 
     pub(crate) fn on_action_started(action: &dyn Action) {
-        println!("{} {}", "[STARTED]".yellow() ,action.display_name());
+        let display_name = action.display_name();
+
+        if !display_name.is_empty() {
+            println!("{} {}", "[STARTED]".yellow(), display_name);
+            return;
+        }
     }
 
     pub(crate) fn on_action_finished(action: &dyn Action) {
-        println!("{} {}", "[FINISHED]".green(), action.display_name());
+        let display_name = action.display_name();
+
+        if !display_name.is_empty() {
+            println!("{} {}", "[FINISHED]".green(), display_name);
+            return;
+        }
     }
 
     pub(crate) fn on_action_failed(action: &dyn Action, _err: &Error) {
-        println!("{} {}", "[FAILED]".red(), action.display_name());
+        let display_name = action.display_name();
+
+        if !display_name.is_empty() {
+            println!("{} {}", "[FAILED]".red(), display_name);
+            return;
+        }
     }
 }
