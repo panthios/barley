@@ -14,6 +14,6 @@ edition = "2021"
 anyhow = "1.0.71"
 async-trait = "0.1.68"
 barley-proc = { version = "0.1.0", path = "../barley-proc" }
-tokio = { version = "1.28.1", features = ["sync"] }
+tokio = { version = "1.28.1", features = ["sync", "rt"] }
 uuid = { version = "1.3.3", features = ["v4"] }
 futures = "0.3.28"
