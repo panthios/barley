@@ -7,13 +7,13 @@ homepage = "https://github.com/panthios/barley"
 documentation = "https://docs.rs/barley-utils"
 readme = "README.md"
 keywords = ["barley", "utils", "utilities", "engine"]
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow = "1.0.71"
 async-trait = "0.1.68"
-barley-runtime = { version = "0.0.1", path = "../barley-runtime" }
+barley-runtime = { version = "0.1.0", path = "../barley-runtime" }
 reqwest = { version = "0.11.17", optional = true }
 tokio = { version = "1.28.1", optional = true }
 

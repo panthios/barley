@@ -8,6 +8,7 @@ Barley is a simple and lightweight scripting framework. Using Rust's safety guar
 
 - **Simple**: Barley is designed with safety and simplicity in mind. It is easy to learn, and provides an intuitive interface for writing scripts at scale.
 - **Fast**: All Barley scripts are compiled to native machine code. This makes Barley scripts extremely fast, and allows them to be used in performance-critical applications. This can make scripts harder to distribute at scale, but the relatively small compile times ease this burden.
+- **Concurrent**: Barley will run actions in parallel whenever possible.
 - **Extensible**: Barley uses dynamic traits under the hood. This allows commands to easily depend on one another. Procedural macros are also provided to allow for easy creation of new commands.
 
 ## Examples
@@ -15,14 +16,21 @@ Barley is a simple and lightweight scripting framework. Using Rust's safety guar
 ### Writing a script
 
 ```rust
+use barley_interface::Interface;
 use barley_runtime::*;
 use barley_utils::time::{Sleep, Duration};
 
 #[tokio::main]
-async fn main() {
-  let mut ctx = Context::new(Default::default());
-  ctx.add_action(Sleep::new(Duration::from_secs(1)));
-  ctx.run().await.unwrap();
+async fn main() -> Result<()> {
+  let mut interface = Interface::new();
+
+  let wait_1s = Sleep::new(Duration::from_secs(1));
+  let mut wait_2s = Sleep::new(Duration::from_secs(2));
+
+  wait_2s.add_dep(interface.add_action(wait_1s).await);
+  interface.add_action(wait_2s).await;
+
+  interface.run().await
 }
 ```
 

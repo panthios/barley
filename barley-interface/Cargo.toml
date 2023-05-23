@@ -7,14 +7,14 @@ homepage = "https://github.com/panthios/barley"
 documentation = "https://docs.rs/barley-interface"
 readme = "README.md"
 keywords = ["barley", "runtime", "interface"]
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-barley-runtime = { version = "0.0.1", path = "../barley-runtime" }
+barley-runtime = { version = "0.1.0", path = "../barley-runtime" }
 colored = "2"
 tokio = { version = "1.28.1", features = ["sync"] }
 
 [dev-dependencies]
-barley-utils = { version = "0.0.1", features = ["full"], path = "../barley-utils" }
+barley-utils = { version = "0.1.0", features = ["full"], path = "../barley-utils" }
 tokio = { version = "1.28.1", features = ["macros", "rt-multi-thread"] }
