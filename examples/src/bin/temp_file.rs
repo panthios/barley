@@ -13,8 +13,8 @@ async fn main() -> Result<()> {
   let mut write = FileW::new(path.clone(), "Hello, world!".to_string());
   let mut read = FileR::new(path.clone());
 
-  write.add_dep(interface.add_action(temp_file).await);
-  read.add_dep(interface.add_action(write).await);
+  write.requires(interface.add_action(temp_file).await);
+  read.requires(interface.add_action(write).await);
   
   let read = interface.add_action(read).await;
 

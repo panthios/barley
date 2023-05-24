@@ -173,6 +173,12 @@ pub fn add_funcs(ast: &mut ItemImpl) {
     }
   };
 
+  let requires: ImplItemFn = syn::parse_quote! {
+    fn requires(&mut self, action: std::sync::Arc<dyn barley_runtime::Action>) {
+      self.__barley_deps.push(action);
+    }
+  };
+
   let deps: ImplItemFn = syn::parse_quote! {
     fn deps(&self) -> Vec<std::sync::Arc<dyn barley_runtime::Action>> {
       self.__barley_deps.clone()
@@ -182,5 +188,6 @@ pub fn add_funcs(ast: &mut ItemImpl) {
   ast.items.push(syn::ImplItem::Fn(check_deps));
   ast.items.push(syn::ImplItem::Fn(id));
   ast.items.push(syn::ImplItem::Fn(add_dep));
+  ast.items.push(syn::ImplItem::Fn(requires));
   ast.items.push(syn::ImplItem::Fn(deps));
 }

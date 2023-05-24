@@ -54,27 +54,27 @@ async fn main() -> Result<()> {
 
   let mut read_file = FileR::new(path);
 
-  ppa_deadsnakes.add_dep(
+  ppa_deadsnakes.requires(
     interface.add_action(software_properties_common).await
   );
 
-  apt_update.add_dep(
+  apt_update.requires(
     interface.add_action(ppa_deadsnakes).await
   );
 
-  python39.add_dep(
+  python39.requires(
     interface.add_action(apt_update).await
   );
 
-  call_python39.add_dep(
+  call_python39.requires(
     interface.add_action(python39).await
   );
 
-  call_python39.add_dep(
+  call_python39.requires(
     interface.add_action(temp_file).await
   );
 
-  read_file.add_dep(
+  read_file.requires(
     interface.add_action(call_python39).await
   );
 

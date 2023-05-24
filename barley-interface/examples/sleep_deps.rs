@@ -10,7 +10,7 @@ async fn main() -> Result<()> {
 
   let interface = Interface::new();
 
-  timer_2.add_dep(
+  timer_2.requires(
     interface.add_action(timer_1).await
   );
 

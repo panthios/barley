@@ -67,7 +67,15 @@ pub trait Action: Send + Sync {
   fn id(&self) -> Id;
 
   /// Add a dependency to the action.
+  #[deprecated(since = "0.2.0", note = "Use `requires` instead")]
   fn add_dep(&mut self, action: Arc<dyn Action>);
+
+  /// Add a direct dependency to the action.
+  /// 
+  /// This action will not run until the dependency
+  /// has been run. This behavior is 100% guaranteed
+  /// by the engine.
+  fn requires(&mut self, action: Arc<dyn Action>);
 
   /// Get the display name of the action.
   fn display_name(&self) -> String;

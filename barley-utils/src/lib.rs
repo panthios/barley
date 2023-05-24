@@ -44,7 +44,7 @@ impl Join {
     let mut join = Self::default();
 
     for action in actions {
-      join.add_dep(action);
+      join.requires(action);
     }
 
     join
