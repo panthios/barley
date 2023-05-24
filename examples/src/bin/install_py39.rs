@@ -1,5 +1,5 @@
 use barley_interface::Interface;
-use barley_runtime::*;
+use barley_runtime::prelude::*;
 use barley_utils::process::Process;
 use barley_utils::fs::{TempFile, FileR};
 use std::env;

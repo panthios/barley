@@ -7,7 +7,7 @@
 //! struct from the `barley-runtime` crate, since it provides
 //! debug callbacks for progress tracking.
 
-use barley_runtime::*;
+use barley_runtime::prelude::*;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use colored::*;

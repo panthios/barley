@@ -10,15 +10,21 @@
 //! [`Action`]: trait.Action.html
 //! [`Context`]: struct.Context.html
 
-use async_trait::async_trait;
-pub use anyhow::{Result, Error};
-use std::sync::Arc;
+use anyhow::Result;
 use tokio::sync::{RwLock, Barrier};
 use std::collections::HashMap;
 use uuid::Uuid;
 use futures::future::join_all;
+use std::sync::Arc;
+use async_trait::async_trait;
 
-pub use barley_proc::barley_action;
+/// The prelude for the `barley-runtime` crate.
+/// 
+/// This module contains all of the important types
+/// and traits for the `barley-runtime` crate. It
+/// should be used instead of importing the types
+/// directly.
+pub mod prelude;
 
 /// A measurable, reversible task.
 /// 

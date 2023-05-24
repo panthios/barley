@@ -6,6 +6,5 @@ edition = "2021"
 [dependencies]
 barley-runtime = { path = "../barley-runtime" }
 barley-utils = { path = "../barley-utils", features = ["full"] }
-barley-proc = { path = "../barley-proc" }
 barley-interface = { path = "../barley-interface" }
 tokio = { version = "1.28.1", features = ["macros", "rt-multi-thread"] }
