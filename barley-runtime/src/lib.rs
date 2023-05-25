@@ -387,3 +387,36 @@ pub enum ActionOutput {
   /// A boolean.
   Boolean(bool)
 }
+
+/// An input for an action.
+/// 
+/// Action inputs are not required to use this
+/// enum, but it is recommended to do so. It allows
+/// users to pass both static values and dependency
+/// outputs to actions.
+pub enum ActionInput<T> {
+  /// A static value.
+  Static(T),
+  /// A value from an action.
+  Action(Arc<dyn Action>)
+}
+
+impl<T> ActionInput<T> {
+  /// Returns the static value, or `None` if the input
+  /// is an action.
+  pub fn static_value(&self) -> Option<&T> {
+    match self {
+      Self::Static(value) => Some(value),
+      _ => None
+    }
+  }
+
+  /// Returns the action, or `None` if the input is
+  /// static.
+  pub fn action(&self) -> Option<Arc<dyn Action>> {
+    match self {
+      Self::Action(action) => Some(action.clone()),
+      _ => None
+    }
+  }
+}

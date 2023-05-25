@@ -1,6 +1,7 @@
 use tokio::fs::File as TokioFile;
 use tokio::io::AsyncWriteExt;
 use std::path::PathBuf;
+use anyhow::anyhow;
 use barley_runtime::prelude::*;
 
 /// A writable file.
@@ -8,16 +9,20 @@ use barley_runtime::prelude::*;
 /// The content written is fixed. This will
 /// be changed in the future.
 #[barley_action]
-#[derive(Default)]
 pub struct FileW {
   path: String,
-  content: String
+  content: ActionInput<String>
 }
 
 impl FileW {
   /// Create a new `FileW` action.
-  pub fn new(path: String, content: String) -> Self {
-    Self { path, content, ..Default::default() }
+  pub fn new(path: String, content: ActionInput<String>) -> Self {
+    Self {
+      path,
+      content,
+      __barley_deps: Default::default(),
+      __barley_id: Default::default()
+    }
   }
 }
 
@@ -34,7 +39,20 @@ impl Action for FileW {
 
   async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
     let mut file = TokioFile::create(&self.path).await?;
-    file.write_all(self.content.as_bytes()).await?;
+    let bytes = if let ActionInput::Static(content) = &self.content {
+      content.as_bytes().to_vec()
+    } else {
+      let content = ctx.clone().get_output_arc(self.content.action().unwrap()).await
+        .ok_or_else(|| anyhow!("Action output not found"))?;
+
+      if let ActionOutput::String(content) = content {
+        content.as_bytes().to_vec()
+      } else {
+        return Err(anyhow!("Action output is not a string"));
+      }
+    };
+
+    file.write_all(&bytes).await?;
 
     ctx.set_local(self, "written", "").await;
 
