@@ -14,17 +14,16 @@ edition = "2021"
 anyhow = "1.0.71"
 barley-runtime = { version = "0.2.0", path = "../barley-runtime" }
 reqwest = { version = "0.11.17", optional = true }
-tokio = { version = "1.28.1", optional = true }
+tokio = "1.28.1"
 
 [features]
 full = ["time", "fs", "io", "http", "process"]
-tokio = ["dep:tokio"]
-reqwest = ["dep:reqwest", "tokio"]
-time = ["tokio?/time", "tokio"]
-fs = ["tokio?/fs", "io", "tokio"]
-io = ["tokio?/io-util", "tokio"]
-http = ["reqwest", "tokio"]
-process = ["tokio", "tokio?/process"]
+reqwest = ["dep:reqwest"]
+time = ["tokio/time"]
+fs = ["tokio/fs", "io"]
+io = ["tokio/io-util"]
+http = ["reqwest"]
+process = ["tokio/process"]
 
 [dev-dependencies]
 tokio = { version = "1.28.1", features = ["test-util", "macros"] }
