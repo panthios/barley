@@ -148,7 +148,7 @@ fn check_ctx(func: &ImplItemFn) -> Option<Ident> {
 
 pub fn add_funcs(ast: &mut ItemImpl) {
   let check_deps: ImplItemFn = syn::parse_quote! {
-    async fn check_deps(&self, ctx: std::sync::Arc<tokio::sync::RwLock<barley_runtime::Context>>) -> Result<bool> {
+    async fn check_deps(&self, ctx: std::sync::Arc<barley_runtime::prelude::RwLock<barley_runtime::Context>>) -> Result<bool> {
       let __barley_deps = self.__barley_deps.clone();
 
       for dep in __barley_deps.iter() {
@@ -167,12 +167,6 @@ pub fn add_funcs(ast: &mut ItemImpl) {
     }
   };
 
-  let add_dep: ImplItemFn = syn::parse_quote! {
-    fn add_dep(&mut self, action: std::sync::Arc<dyn barley_runtime::Action>) {
-      self.__barley_deps.push(action);
-    }
-  };
-
   let requires: ImplItemFn = syn::parse_quote! {
     fn requires(&mut self, action: std::sync::Arc<dyn barley_runtime::Action>) {
       self.__barley_deps.push(action);
@@ -187,7 +181,6 @@ pub fn add_funcs(ast: &mut ItemImpl) {
 
   ast.items.push(syn::ImplItem::Fn(check_deps));
   ast.items.push(syn::ImplItem::Fn(id));
-  ast.items.push(syn::ImplItem::Fn(add_dep));
   ast.items.push(syn::ImplItem::Fn(requires));
   ast.items.push(syn::ImplItem::Fn(deps));
 }
