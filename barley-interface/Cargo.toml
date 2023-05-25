@@ -11,7 +11,7 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-barley-runtime = { version = "0.2.0", path = "../barley-runtime" }
+barley-runtime = { version = "0.3.0", path = "../barley-runtime" }
 colored = "2"
 tokio = { version = "1.28.1", features = ["sync"] }
 

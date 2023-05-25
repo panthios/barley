@@ -10,7 +10,7 @@ async fn main() -> Result<()> {
   let temp_file = TempFile::new("temp_file_test".to_string());
   let path = temp_file.path().to_str().unwrap().to_string();
 
-  let mut write = FileW::new(path.clone(), "Hello, world!".to_string());
+  let mut write = FileW::new(path.clone(), ActionInput::Static("Hello, world!".to_string()));
   let mut read = FileR::new(path.clone());
 
   write.requires(interface.add_action(temp_file).await);
