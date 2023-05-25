@@ -402,6 +402,16 @@ pub enum ActionInput<T> {
 }
 
 impl<T> ActionInput<T> {
+  /// Creates a new input from an action.
+  pub fn new_action(value: Arc<dyn Action>) -> Self {
+    Self::Action(value)
+  }
+
+  /// Creates a new input from a static value.
+  pub fn new_static(value: T) -> Self {
+    Self::Static(value)
+  }
+
   /// Returns the static value, or `None` if the input
   /// is an action.
   pub fn static_value(&self) -> Option<&T> {
@@ -418,5 +428,33 @@ impl<T> ActionInput<T> {
       Self::Action(action) => Some(action.clone()),
       _ => None
     }
+  }
+
+  /// Returns `true` if the input is static.
+  pub fn is_static(&self) -> bool {
+    self.static_value().is_some()
+  }
+
+  /// Returns `true` if the input is an action.
+  pub fn is_action(&self) -> bool {
+    self.action().is_some()
+  }
+
+  /// Returns the static value, or panics if the input
+  /// is an action.
+  pub fn unwrap_static(&self) -> &T {
+    self.static_value().unwrap()
+  }
+
+  /// Returns the action, or panics if the input is
+  /// static.
+  pub fn unwrap_action(&self) -> Arc<dyn Action> {
+    self.action().unwrap()
+  }
+}
+
+impl<T> From<T> for ActionInput<T> {
+  fn from(value: T) -> Self {
+    Self::new_static(value)
   }
 }
