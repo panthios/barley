@@ -88,6 +88,12 @@ pub trait Action: Send + Sync {
   fn deps(&self) -> Vec<Arc<dyn Action>>;
 }
 
+/// An action object.
+/// 
+/// This is just a type alias, and does
+/// not add any functionality.
+pub type ActionObject = Arc<dyn Action + 'static>;
+
 /// A context for running actions.
 /// 
 /// There should only be one of these per workflow
