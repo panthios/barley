@@ -458,3 +458,9 @@ impl<T> From<T> for ActionInput<T> {
     Self::new_static(value)
   }
 }
+
+impl<T: Default> Default for ActionInput<T> {
+  fn default() -> Self {
+    Self::new_static(T::default())
+  }
+}
