@@ -7,7 +7,7 @@ use std::{
 };
 
 
-pub fn cmd_init() -> Result<()> {
+pub fn cmd_init(lib: bool) -> Result<()> {
   let current_dir = current_dir()
     .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
 
@@ -25,24 +25,47 @@ pub fn cmd_init() -> Result<()> {
   fs::create_dir_all(&current_dir.join("src"))
     .or_else(|_| Err(anyhow!("Failed to create src directory")))?;
 
-  fs::write(&current_dir.join("src/main.rs"), include_str!("../template/main.rs"))
-    .or_else(|_| Err(anyhow!("Failed to create main.rs")))?;
+  if lib {
 
-  let cargo_toml: String = include_str!("../template/Cargo.toml")
-    .replace("{{ name }}", format!("blyscript-{}", &current_dir.file_name().unwrap().to_string_lossy()).as_str());
+    fs::write(&current_dir.join("src/lib.rs"), include_str!("../template/library/lib.rs"))
+      .or_else(|_| Err(anyhow!("Failed to create lib.rs")))?;
 
-  fs::write(&current_dir.join("Cargo.toml"), cargo_toml)
-    .or_else(|_| Err(anyhow!("Failed to create Cargo.toml")))?;
+    let cargo_toml: String = include_str!("../template/library/Cargo.toml")
+      .replace("{{ name }}", &current_dir.file_name().unwrap().to_string_lossy());
 
-  fs::write(&current_dir.join(".gitignore"), include_str!("../template/.gitignore"))
-    .or_else(|_| Err(anyhow!("Failed to create .gitignore")))?;
+    fs::write(&current_dir.join("Cargo.toml"), cargo_toml)
+      .or_else(|_| Err(anyhow!("Failed to create Cargo.toml")))?;
 
-  let barley_toml: String = include_str!("../template/barley.toml")
-    .replace("{{ name }}", &current_dir.file_name().unwrap().to_string_lossy());
+    fs::write(&current_dir.join(".gitignore"), include_str!("../template/library/.gitignore"))
+      .or_else(|_| Err(anyhow!("Failed to create .gitignore")))?;
 
-  fs::write(&current_dir.join("barley.toml"), barley_toml)
-    .or_else(|_| Err(anyhow!("Failed to create barley.toml")))?;
+    let barley_toml: String = include_str!("../template/library/barley.toml")
+      .replace("{{ name }}", &current_dir.file_name().unwrap().to_string_lossy());
 
+    fs::write(&current_dir.join("barley.toml"), barley_toml)
+      .or_else(|_| Err(anyhow!("Failed to create barley.toml")))?;
+
+  } else {
+
+    fs::write(&current_dir.join("src/main.rs"), include_str!("../template/script/main.rs"))
+      .or_else(|_| Err(anyhow!("Failed to create main.rs")))?;
+
+    let cargo_toml: String = include_str!("../template/script/Cargo.toml")
+      .replace("{{ name }}", format!("blyscript-{}", &current_dir.file_name().unwrap().to_string_lossy()).as_str());
+
+    fs::write(&current_dir.join("Cargo.toml"), cargo_toml)
+      .or_else(|_| Err(anyhow!("Failed to create Cargo.toml")))?;
+
+    fs::write(&current_dir.join(".gitignore"), include_str!("../template/script/.gitignore"))
+      .or_else(|_| Err(anyhow!("Failed to create .gitignore")))?;
+
+    let barley_toml: String = include_str!("../template/script/barley.toml")
+      .replace("{{ name }}", &current_dir.file_name().unwrap().to_string_lossy());
+
+    fs::write(&current_dir.join("barley.toml"), barley_toml)
+      .or_else(|_| Err(anyhow!("Failed to create barley.toml")))?;
+
+  }
 
   println!("Successfully initialized barley project");
 
@@ -66,6 +89,10 @@ pub fn cmd_add(name: String) -> Result<()> {
 
   let mut config: Config = toml::from_str(&barley_toml)?;
   let mut cargo: Manifest = toml::from_str(&cargo_toml)?;
+
+  if let Some(_) = config.library {
+    return Err(anyhow!("Project is a library"));
+  }
 
   if config.dependencies.contains_key(&name) {
     return Err(anyhow!("Module already exists"));

@@ -12,7 +12,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum SubCli {
-  Init,
+  Init {
+    #[arg(long)]
+    lib: bool
+  },
   Add {
     #[arg(help = "The name of the module to add")]
     name: String
@@ -24,8 +27,8 @@ fn main() -> Result<()> {
   let args = Cli::parse();
 
   match args.subcli {
-    SubCli::Init => {
-      command::cmd_init()
+    SubCli::Init { lib } => {
+      command::cmd_init(lib)
     },
     SubCli::Add { name } => {
       command::cmd_add(name)
