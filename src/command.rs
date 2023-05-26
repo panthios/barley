@@ -1,4 +1,6 @@
+use crate::config::Config;
 use anyhow::{Result, anyhow};
+use cargo_toml::{Manifest, Dependency, DependencyDetail};
 use std::{
   env::current_dir,
   fs
@@ -35,8 +37,64 @@ pub fn cmd_init() -> Result<()> {
   fs::write(&current_dir.join(".gitignore"), include_str!("../template/.gitignore"))
     .or_else(|_| Err(anyhow!("Failed to create .gitignore")))?;
 
+  let barley_toml: String = include_str!("../template/barley.toml")
+    .replace("{{ name }}", &current_dir.file_name().unwrap().to_string_lossy());
+
+  fs::write(&current_dir.join("barley.toml"), barley_toml)
+    .or_else(|_| Err(anyhow!("Failed to create barley.toml")))?;
+
 
   println!("Successfully initialized barley project");
+
+  Ok(())
+}
+
+pub fn cmd_add(name: String) -> Result<()> {
+  let current_dir = current_dir()
+    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
+
+  if !current_dir.join("barley.toml").exists() {
+    return Err(anyhow!("barley.toml not found"));
+  }
+
+  let mut barley_toml = fs::read_to_string(&current_dir.join("barley.toml"))
+    .or_else(|_| Err(anyhow!("Failed to read barley.toml")))?;
+
+  let cargo_toml = fs::read_to_string(&current_dir.join("Cargo.toml"))
+    .or_else(|_| Err(anyhow!("Failed to read Cargo.toml")))?;
+
+
+  let mut config: Config = toml::from_str(&barley_toml)?;
+  let mut cargo: Manifest = toml::from_str(&cargo_toml)?;
+
+  if config.dependencies.contains_key(&name) {
+    return Err(anyhow!("Module already exists"));
+  }
+
+  config.dependencies.insert(name.clone(), "latest".to_string());
+
+  barley_toml = toml::to_string(&config)?;
+
+  fs::write(&current_dir.join("barley.toml"), barley_toml)
+    .or_else(|_| Err(anyhow!("Failed to write to barley.toml")))?;
+
+
+  cargo.dependencies.insert(
+    format!("blyx-{}", name),
+    Dependency::Detailed(
+      DependencyDetail {
+        version: Some("*".to_string()),
+        git: Some("https://github.com/panthios/barley-utils".to_string()),
+        ..Default::default()
+      }
+    )
+  );
+
+  fs::write(&current_dir.join("Cargo.toml"), toml::to_string(&cargo)?)
+    .or_else(|_| Err(anyhow!("Failed to write to Cargo.toml")))?;
+
+
+  println!("Successfully added module {}", name);
 
   Ok(())
 }
