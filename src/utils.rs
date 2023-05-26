@@ -9,166 +9,140 @@ use std::{
 
 
 
-pub fn barley_name(path: Option<PathBuf>) -> Result<String> {
-  let dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
-
-  let dir = match path {
-    Some(path) => dir.join(path),
-    None => dir
-  };
-
-  let name = dir.file_name()
-    .ok_or_else(|| anyhow!("Failed to get directory name"))?
-    .to_string_lossy()
-    .to_string();
-
-  Ok(name)
+pub struct Context {
+  pub path: PathBuf
 }
 
-pub fn is_empty(path: Option<PathBuf>) -> Result<bool> {
-  let dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
+impl Context {
+  pub fn new(path: Option<PathBuf>) -> Result<Self> {
+    let curdir = current_dir()
+      .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
 
-  let dir = match path {
-    Some(path) => dir.join(path),
-    None => dir
-  };
+    let path = match path {
+      Some(path) => curdir.join(path),
+      None => curdir
+    };
 
-  let is_empty = {
-    let mut entries = fs::read_dir(&dir)
-      .or_else(|_| Err(anyhow!("Failed to read current directory")))?;
+    Ok(Self { path })
+  }
 
-    entries.next().is_none()
-  };
+  pub fn barley_name(&self) -> Result<String> {
+    let name = self.path.file_name()
+      .ok_or_else(|| anyhow!("Failed to get directory name"))?
+      .to_string_lossy()
+      .to_string();
 
-  Ok(is_empty)
-}
+    Ok(name)
+  }
 
-pub fn is_crate(path: Option<PathBuf>) -> Result<bool> {
-  let dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
+  pub fn is_empty(&self) -> Result<bool> {
+    let is_empty = {
+      let mut entries = fs::read_dir(&self.path)
+        .or_else(|_| Err(anyhow!("Failed to read current directory")))?;
 
-  let dir = match path {
-    Some(path) => dir.join(path),
-    None => dir
-  };
+      entries.next().is_none()
+    };
 
-  let is_crate = dir.join("Cargo.toml").exists();
+    Ok(is_empty)
+  }
 
-  Ok(is_crate)
-}
+  pub fn is_crate(&self) -> Result<bool> {
+    let is_crate = self.path.join("Cargo.toml").exists();
 
-pub fn is_barley(path: Option<PathBuf>) -> Result<bool> {
-  let dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
+    Ok(is_crate)
+  }
 
-  let dir = match path {
-    Some(path) => dir.join(path),
-    None => dir
-  };
+  pub fn is_barley(&self) -> Result<bool> {
+    let is_barley = self.path.join("barley.toml").exists();
 
-  let is_barley = dir.join("barley.toml").exists();
+    Ok(is_barley)
+  }
 
-  Ok(is_barley)
-}
+  pub fn is_barley_script(&self) -> Result<bool> {
+    if !self.is_barley()? {
+      return Ok(false);
+    }
 
-pub fn get_barley(path: Option<PathBuf>) -> Result<schema::Config> {
-  let dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
+    let config = self.barley_config()?;
 
-  let dir = match path {
-    Some(path) => dir.join(path),
-    None => dir
-  };
+    Ok(config.script.is_some())
+  }
 
-  let barley_toml = fs::read_to_string(dir.join("barley.toml"))
-    .or_else(|_| Err(anyhow!("Failed to read barley.toml")))?;
+  pub fn barley_config(&self) -> Result<schema::Config> {
+    let barley_toml = fs::read_to_string(self.path.join("barley.toml"))
+      .or_else(|_| Err(anyhow!("Failed to read barley.toml")))?;
 
-  let config: schema::Config = toml::from_str(&barley_toml)
-    .or_else(|_| Err(anyhow!("Failed to parse barley.toml")))?;
+    let config: schema::Config = toml::from_str(&barley_toml)
+      .or_else(|_| Err(anyhow!("Failed to parse barley.toml")))?;
 
-  Ok(config)
-}
+    Ok(config)
+  }
 
-pub fn set_barley(path: Option<PathBuf>, config: schema::Config) -> Result<()> {
-  let dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
+  pub fn barley_lockfile(&self) -> Result<schema::Lockfile> {
+    if !self.path.join("barley.lock").exists() {
+      return Ok(Default::default());
+    }
 
-  let dir = match path {
-    Some(path) => dir.join(path),
-    None => dir
-  };
+    let lockfile_toml = fs::read_to_string(self.path.join("barley.lock"))
+      .or_else(|_| Err(anyhow!("Failed to read barley.lock")))?;
 
-  let barley_toml = toml::to_string(&config)
-    .or_else(|_| Err(anyhow!("Failed to serialize barley.toml")))?;
+    let lockfile: schema::Lockfile = toml::from_str(&lockfile_toml)
+      .or_else(|_| Err(anyhow!("Failed to parse barley.lock")))?;
 
-  fs::write(dir.join("barley.toml"), barley_toml)
-    .or_else(|_| Err(anyhow!("Failed to write barley.toml")))?;
+    Ok(lockfile)
+  }
 
-  Ok(())
-}
+  pub fn cargo_config(&self) -> Result<Manifest> {
+    let cargo_toml = fs::read_to_string(self.path.join("Cargo.toml"))
+      .or_else(|_| Err(anyhow!("Failed to read Cargo.toml")))?;
 
-pub fn get_cargo(path: Option<PathBuf>) -> Result<Manifest> {
-  let dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
+    let cargo: Manifest = toml::from_str(&cargo_toml)
+      .or_else(|_| Err(anyhow!("Failed to parse Cargo.toml")))?;
 
-  let dir = match path {
-    Some(path) => dir.join(path),
-    None => dir
-  };
+    Ok(cargo)
+  }
 
-  let cargo_toml = fs::read_to_string(dir.join("Cargo.toml"))
-    .or_else(|_| Err(anyhow!("Failed to read Cargo.toml")))?;
+  pub fn set_barley_config(&self, config: schema::Config) -> Result<&Self> {
+    let barley_toml = toml::to_string(&config)
+      .or_else(|_| Err(anyhow!("Failed to serialize barley.toml")))?;
 
-  let cargo: Manifest = toml::from_str(&cargo_toml)
-    .or_else(|_| Err(anyhow!("Failed to parse Cargo.toml")))?;
+    fs::write(self.path.join("barley.toml"), barley_toml)
+      .or_else(|_| Err(anyhow!("Failed to write barley.toml")))?;
 
-  Ok(cargo)
-}
+    Ok(self)
+  }
 
-pub fn set_cargo(path: Option<PathBuf>, cargo: Manifest) -> Result<()> {
-  let dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
+  pub fn set_barley_lockfile(&self, lockfile: schema::Lockfile) -> Result<&Self> {
+    let lockfile_toml = toml::to_string(&lockfile)
+      .or_else(|_| Err(anyhow!("Failed to serialize barley.lock")))?;
 
-  let dir = match path {
-    Some(path) => dir.join(path),
-    None => dir
-  };
+    fs::write(self.path.join("barley.lock"), lockfile_toml)
+      .or_else(|_| Err(anyhow!("Failed to write barley.lock")))?;
 
-  let cargo_toml = toml::to_string(&cargo)
-    .or_else(|_| Err(anyhow!("Failed to serialize Cargo.toml")))?;
+    Ok(self)
+  }
 
-  fs::write(dir.join("Cargo.toml"), cargo_toml)
-    .or_else(|_| Err(anyhow!("Failed to write Cargo.toml")))?;
+  pub fn set_cargo_config(&self, cargo: Manifest) -> Result<&Self> {
+    let cargo_toml = toml::to_string(&cargo)
+      .or_else(|_| Err(anyhow!("Failed to serialize Cargo.toml")))?;
 
-  Ok(())
-}
+    fs::write(self.path.join("Cargo.toml"), cargo_toml)
+      .or_else(|_| Err(anyhow!("Failed to write Cargo.toml")))?;
 
-pub fn write_file<P: AsRef<Path>>(base: Option<P>, path: P, contents: &str) -> Result<()> {
-  let dir = match base {
-    Some(base) => current_dir()?.join(base),
-    None => current_dir()?
-  };
+    Ok(self)
+  }
 
-  let path = dir.join(path);
+  pub fn create_dir<P: AsRef<Path>>(&self, name: P) -> Result<&Self> {
+    fs::create_dir_all(self.path.join(name))
+      .or_else(|_| Err(anyhow!("Failed to create directory")))?;
 
-  fs::write(&path, contents)
-    .or_else(|_| Err(anyhow!(format!("Failed to write file: {}", path.to_string_lossy()))))?;
+    Ok(self)
+  }
 
-  Ok(())
-}
+  pub fn write_file<P: AsRef<Path>>(&self, name: P, content: &str) -> Result<&Self> {
+    fs::write(self.path.join(name), content)
+      .or_else(|_| Err(anyhow!("Failed to write file")))?;
 
-pub fn create_dir<P: AsRef<Path>>(base: Option<PathBuf>, path: P) -> Result<()> {
-  let dir = match base {
-    Some(base) => current_dir()?.join(base),
-    None => current_dir()?
-  };
-
-  let path = dir.join(path);
-
-  fs::create_dir_all(&path)
-    .or_else(|_| Err(anyhow!(format!("Failed to create directory: {}", path.to_string_lossy()))))?;
-
-  Ok(())
+    Ok(self)
+  }
 }

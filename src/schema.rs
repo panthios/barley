@@ -22,7 +22,7 @@ pub struct LibraryConfig {
 }
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Lockfile {
   pub dependencies: HashMap<String, LockedDependency>
 }

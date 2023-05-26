@@ -27,12 +27,14 @@ enum SubCli {
 fn main() -> Result<()> {
   let args = Cli::parse();
 
+  let ctx = utils::Context::new(None)?;
+
   match args.subcli {
     SubCli::Init { lib } => {
-      command::cmd_init(lib)
+      command::cmd_init(ctx, lib)
     },
     SubCli::Add { name } => {
-      command::cmd_add(name)
+      command::cmd_add(ctx, name)
     }
   }
 }
