@@ -20,8 +20,11 @@ pub fn cmd_init(ctx: utils::Context, lib: bool) -> Result<()> {
     ctx.create_dir("src")?
       .write_file("src/lib.rs", include_str!("../template/library/lib.rs"))?
       .write_file("Cargo.toml", &cargo_toml)?
-      .write_file("barley.toml", &barley_toml)?
-      .write_file(".gitignore", include_str!("../template/library/.gitignore"))?;
+      .write_file("barley.toml", &barley_toml)?;
+
+    if !ctx.is_in_repository()? {
+      ctx.write_file(".gitignore", include_str!("../template/library/.gitignore"))?;
+    }
 
   } else {
 
@@ -34,8 +37,12 @@ pub fn cmd_init(ctx: utils::Context, lib: bool) -> Result<()> {
     ctx.create_dir("src")?
       .write_file("src/main.rs", include_str!("../template/script/main.rs"))?
       .write_file("Cargo.toml", &cargo_toml)?
-      .write_file("barley.toml", &barley_toml)?
-      .write_file(".gitignore", include_str!("../template/script/.gitignore"))?;
+      .write_file("barley.toml", &barley_toml)?;
+
+    if !ctx.is_in_repository()? {
+      ctx.write_file(".gitignore", include_str!("../template/script/.gitignore"))?;
+    }
+
   }
 
   println!("Successfully initialized barley project");

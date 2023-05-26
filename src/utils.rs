@@ -1,12 +1,18 @@
 use crate::schema;
 use anyhow::{Result, anyhow};
 use cargo_toml::Manifest;
+use git2::Repository;
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::{
   env::current_dir,
   path::{PathBuf, Path},
   fs
 };
 
+lazy_static! {
+  pub static ref RE_BARLEY_NAME: Regex = Regex::new(r#"^[a-zA-Z][a-zA-Z0-9_-]*$"#).unwrap();
+}
 
 
 pub struct Context {
@@ -22,6 +28,11 @@ impl Context {
       Some(path) => curdir.join(path),
       None => curdir
     };
+
+    if !path.exists() {
+      fs::create_dir_all(&path)
+        .or_else(|_| Err(anyhow!("Failed to create directory")))?;
+    }
 
     Ok(Self { path })
   }
@@ -66,6 +77,15 @@ impl Context {
     let config = self.barley_config()?;
 
     Ok(config.script.is_some())
+  }
+
+  pub fn is_in_repository(&self) -> Result<bool> {
+    let repo = Repository::discover(&self.path)
+      .or_else(|_| Err(anyhow!("Failed to discover repository")))?;
+
+    let is_in_repository = repo.is_bare() || repo.workdir().is_some();
+
+    Ok(is_in_repository)
   }
 
   pub fn barley_config(&self) -> Result<schema::Config> {
