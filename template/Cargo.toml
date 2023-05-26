@@ -1,0 +1,9 @@
+[package]
+name = "{{ name }}"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+barley-interface = { version = "0.2.0", git = "https://github.com/panthios/barley" }
+barley-runtime = { version = "0.3.0", git = "https://github.com/panthios/barley" }
+tokio = { version = "1.28.1", features = ["macros"] }
