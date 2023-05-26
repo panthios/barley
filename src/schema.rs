@@ -20,3 +20,16 @@ pub struct LibraryConfig {
   pub name: String,
   pub version: String
 }
+
+
+#[derive(Serialize, Deserialize)]
+pub struct Lockfile {
+  pub dependencies: HashMap<String, LockedDependency>
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LockedDependency {
+  pub version: String,
+  pub cargo_name: String,
+  pub cargo_version: String
+}

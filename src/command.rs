@@ -1,69 +1,45 @@
-use crate::config::Config;
+use crate::utils;
 use anyhow::{Result, anyhow};
-use cargo_toml::{Manifest, Dependency, DependencyDetail};
-use std::{
-  env::current_dir,
-  fs
-};
+use cargo_toml::{Dependency, DependencyDetail};
+
 
 
 pub fn cmd_init(lib: bool) -> Result<()> {
-  let current_dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
-
-  let is_empty = {
-    let mut entries = fs::read_dir(&current_dir)
-      .or_else(|_| Err(anyhow!("Failed to read current directory")))?;
-
-    entries.next().is_none()
-  };
-
-  if !is_empty {
-    return Err(anyhow!("Current directory is not empty"));
+  if !utils::is_empty(None)? {
+    return Err(anyhow!("Directory is not empty"));
   }
 
-  fs::create_dir_all(&current_dir.join("src"))
-    .or_else(|_| Err(anyhow!("Failed to create src directory")))?;
+  utils::create_dir(None, "src")?;
 
   if lib {
 
-    fs::write(&current_dir.join("src/lib.rs"), include_str!("../template/library/lib.rs"))
-      .or_else(|_| Err(anyhow!("Failed to create lib.rs")))?;
+    utils::write_file(None, "src/lib.rs", include_str!("../template/library/lib.rs"))?;
 
     let cargo_toml: String = include_str!("../template/library/Cargo.toml")
-      .replace("{{ name }}", &current_dir.file_name().unwrap().to_string_lossy());
+      .replace("{{ name }}", &format!("blyx-{}", &utils::barley_name(None)?));
 
-    fs::write(&current_dir.join("Cargo.toml"), cargo_toml)
-      .or_else(|_| Err(anyhow!("Failed to create Cargo.toml")))?;
-
-    fs::write(&current_dir.join(".gitignore"), include_str!("../template/library/.gitignore"))
-      .or_else(|_| Err(anyhow!("Failed to create .gitignore")))?;
+    utils::write_file(None, "Cargo.toml", &cargo_toml)?;
+    utils::write_file(None, ".gitignore", include_str!("../template/library/.gitignore"))?;
 
     let barley_toml: String = include_str!("../template/library/barley.toml")
-      .replace("{{ name }}", &current_dir.file_name().unwrap().to_string_lossy());
+      .replace("{{ name }}", &utils::barley_name(None)?);
 
-    fs::write(&current_dir.join("barley.toml"), barley_toml)
-      .or_else(|_| Err(anyhow!("Failed to create barley.toml")))?;
+    utils::write_file(None, "barley.toml", &barley_toml)?;
 
   } else {
 
-    fs::write(&current_dir.join("src/main.rs"), include_str!("../template/script/main.rs"))
-      .or_else(|_| Err(anyhow!("Failed to create main.rs")))?;
+    utils::write_file(None, "src/main.rs", include_str!("../template/script/main.rs"))?;
 
     let cargo_toml: String = include_str!("../template/script/Cargo.toml")
-      .replace("{{ name }}", format!("blyscript-{}", &current_dir.file_name().unwrap().to_string_lossy()).as_str());
+      .replace("{{ name }}", &format!("blyscript-{}", &utils::barley_name(None)?));
 
-    fs::write(&current_dir.join("Cargo.toml"), cargo_toml)
-      .or_else(|_| Err(anyhow!("Failed to create Cargo.toml")))?;
-
-    fs::write(&current_dir.join(".gitignore"), include_str!("../template/script/.gitignore"))
-      .or_else(|_| Err(anyhow!("Failed to create .gitignore")))?;
+    utils::write_file(None, "Cargo.toml", &cargo_toml)?;
+    utils::write_file(None, ".gitignore", include_str!("../template/script/.gitignore"))?;
 
     let barley_toml: String = include_str!("../template/script/barley.toml")
-      .replace("{{ name }}", &current_dir.file_name().unwrap().to_string_lossy());
+      .replace("{{ name }}", &utils::barley_name(None)?);
 
-    fs::write(&current_dir.join("barley.toml"), barley_toml)
-      .or_else(|_| Err(anyhow!("Failed to create barley.toml")))?;
+    utils::write_file(None, "barley.toml", &barley_toml)?;
 
   }
 
@@ -73,22 +49,16 @@ pub fn cmd_init(lib: bool) -> Result<()> {
 }
 
 pub fn cmd_add(name: String) -> Result<()> {
-  let current_dir = current_dir()
-    .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
-
-  if !current_dir.join("barley.toml").exists() {
-    return Err(anyhow!("barley.toml not found"));
+  if !utils::is_barley(None)? {
+    return Err(anyhow!("Not a barley project"));
   }
 
-  let mut barley_toml = fs::read_to_string(&current_dir.join("barley.toml"))
-    .or_else(|_| Err(anyhow!("Failed to read barley.toml")))?;
+  if !utils::is_crate(None)? {
+    return Err(anyhow!("Not a crate"));
+  }
 
-  let cargo_toml = fs::read_to_string(&current_dir.join("Cargo.toml"))
-    .or_else(|_| Err(anyhow!("Failed to read Cargo.toml")))?;
-
-
-  let mut config: Config = toml::from_str(&barley_toml)?;
-  let mut cargo: Manifest = toml::from_str(&cargo_toml)?;
+  let mut config = utils::get_barley(None)?;
+  let mut cargo = utils::get_cargo(None)?;
 
   if let Some(_) = config.library {
     return Err(anyhow!("Project is a library"));
@@ -99,12 +69,7 @@ pub fn cmd_add(name: String) -> Result<()> {
   }
 
   config.dependencies.insert(name.clone(), "latest".to_string());
-
-  barley_toml = toml::to_string(&config)?;
-
-  fs::write(&current_dir.join("barley.toml"), barley_toml)
-    .or_else(|_| Err(anyhow!("Failed to write to barley.toml")))?;
-
+  utils::set_barley(None, config)?;
 
   cargo.dependencies.insert(
     format!("blyx-{}", name),
@@ -117,9 +82,7 @@ pub fn cmd_add(name: String) -> Result<()> {
     )
   );
 
-  fs::write(&current_dir.join("Cargo.toml"), toml::to_string(&cargo)?)
-    .or_else(|_| Err(anyhow!("Failed to write to Cargo.toml")))?;
-
+  utils::set_cargo(None, cargo)?;
 
   println!("Successfully added module {}", name);
 

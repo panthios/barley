@@ -2,7 +2,8 @@ use clap::{Parser, Subcommand};
 use anyhow::Result;
 
 mod command;
-mod config;
+mod schema;
+mod utils;
 
 #[derive(Parser)]
 struct Cli {
