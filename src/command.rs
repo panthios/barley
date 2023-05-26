@@ -60,13 +60,17 @@ pub fn cmd_add(ctx: utils::Context, name: String) -> Result<()> {
     return Err(anyhow!("Module already exists"));
   }
 
-  config.dependencies.insert(name.clone(), "0.0.1".to_string());
+  let barley_version = "0.0.1".to_string();
+  let cargo_version = "0.0.1".to_string();
+  let cargo_name = format!("blyx-{}", name);
+
+  config.dependencies.insert(name.clone(), barley_version.clone());
 
   cargo.dependencies.insert(
-    format!("blyx-{}", name),
+    cargo_name.clone(),
     Dependency::Detailed(
       DependencyDetail {
-        version: Some("0.0.1".to_string()),
+        version: Some(cargo_version.clone()),
         git: Some("https://github.com/panthios/barley-utils".to_string()),
         ..Default::default()
       }
@@ -76,9 +80,9 @@ pub fn cmd_add(ctx: utils::Context, name: String) -> Result<()> {
   lockfile.dependencies.insert(
     name.clone(),
     LockedDependency {
-      version: "0.0.1".to_string(),
-      cargo_version: "0.0.1".to_string(),
-      cargo_name: format!("blyx-{}", name)
+      version: barley_version,
+      cargo_version,
+      cargo_name
     }
   );
 
@@ -87,6 +91,60 @@ pub fn cmd_add(ctx: utils::Context, name: String) -> Result<()> {
     .set_barley_lockfile(lockfile)?;
 
   println!("Successfully added module {}", name);
+
+  Ok(())
+}
+
+pub fn cmd_remove(ctx: utils::Context, name: String) -> Result<()> {
+  if ctx.is_empty()? {
+    return Err(anyhow!("Directory is empty"));
+  }
+
+  if !ctx.is_barley_script()? {
+    return Err(anyhow!("Directory is not a barley script"));
+  }
+
+  let mut config = ctx.barley_config()?;
+  let mut cargo = ctx.cargo_config()?;
+  let mut lockfile = ctx.barley_lockfile()?;
+
+  if !config.dependencies.contains_key(&name) {
+    return Err(anyhow!("Module is not installed"));
+  }
+
+  config.dependencies.remove(&name);
+  cargo.dependencies.remove(&format!("blyx-{}", name));
+  lockfile.dependencies.remove(&name);
+
+  ctx.set_barley_config(config)?
+    .set_cargo_config(cargo)?
+    .set_barley_lockfile(lockfile)?;
+
+  println!("Successfully removed module {}", name);
+
+  Ok(())
+}
+
+pub fn cmd_build(ctx: utils::Context, target: Option<String>) -> Result<()> {
+  if ctx.is_empty()? {
+    return Err(anyhow!("Directory is empty"));
+  }
+
+  if !ctx.is_barley_script()? {
+    return Err(anyhow!("Directory is not a barley script"));
+  }
+
+  let target = target.unwrap_or("".to_string());
+
+  let mut args = vec!["build", "--release"];
+  if !target.is_empty() {
+    args.push("--target");
+    args.push(&target);
+  }
+
+  ctx.run_cargo(&args)?;
+
+  println!("Successfully built project");
 
   Ok(())
 }

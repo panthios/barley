@@ -145,4 +145,19 @@ impl Context {
 
     Ok(self)
   }
+
+  pub fn run_cargo(&self, args: &[&str]) -> Result<()> {
+    let mut command = std::process::Command::new("cargo");
+    
+    let status = command
+      .args(args)
+      .current_dir(&self.path)
+      .status()?;
+
+    if !status.success() {
+      return Err(anyhow!("Failed to run cargo"));
+    }
+
+    Ok(())
+  }
 }
