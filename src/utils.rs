@@ -80,9 +80,13 @@ impl Context {
   }
 
   pub fn is_in_repository(&self) -> Result<bool> {
-    let repo = Repository::discover(&self.path)
-      .or_else(|_| Err(anyhow!("Failed to discover repository")))?;
+    let repo = Repository::discover(&self.path);
 
+    if repo.is_err() {
+      return Ok(false);
+    }
+
+    let repo = repo.unwrap();
     let is_in_repository = repo.is_bare() || repo.workdir().is_some();
 
     Ok(is_in_repository)

@@ -6,5 +6,5 @@ pub use anyhow::{Result, Error};
 pub use crate::{
   Action, Context, ContextCallbacks,
   ContextAbstract, ActionOutput,
-  ActionInput
+  ActionInput, ActionObject
 };
