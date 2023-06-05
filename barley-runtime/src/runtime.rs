@@ -1,6 +1,8 @@
 use futures::future::join_all;
 use tokio::sync::RwLock;
 use tokio::sync::Barrier;
+use anyhow::Result;
+use tokio::task::JoinHandle;
 
 use std::{
     sync::Arc,
@@ -8,6 +10,7 @@ use std::{
 };
 use crate::{
     ActionObject, Id,
+    ActionOutput,
     context::Context
 };
 
@@ -29,12 +32,13 @@ use crate::{
 #[derive(Clone)]
 pub struct Runtime {
     ctx: Arc<RwLock<Context>>,
-    barriers: HashMap<Id, Arc<Barrier>>
+    barriers: HashMap<Id, Arc<Barrier>>,
+    outputs: Arc<RwLock<HashMap<Id, ActionOutput>>>
 }
 
 impl Runtime {
     /// Run the workflow.
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> Result<()> {
         let actions = self.ctx.read().await.actions.clone();
         let mut dependents: HashMap<Id, usize> = HashMap::new();
 
@@ -66,11 +70,11 @@ impl Runtime {
             self.barriers.insert(id, barrier);
         }
 
-        let mut handles = Vec::new();
-        let ctx = Arc::new(RwLock::new(self.ctx));
+        let mut handles: Vec<JoinHandle<Result<()>>> = Vec::new();
 
         for action in actions {
-            let ctx = ctx.clone();
+            let runtime_clone = self.clone();
+
             let action = action.clone();
 
             let deps = action.deps();
@@ -92,17 +96,43 @@ impl Runtime {
                     barrier.wait().await;
                 }
 
+                if action.check(runtime_clone.clone()).await? {
+                    return Ok(())
+                }
+
+                let display_name = action.display_name();
+
+                println!("Running action: {}", display_name);
+                let output = action.perform(runtime_clone.clone()).await;
+
+                if output.is_err() {
+                    println!("Action failed: {}", display_name);
+                    return Err(output.err().unwrap())
+                }
+
+                println!("Action finished: {}", display_name);
+
+                let output = output.unwrap();
+
                 if let Some(barrier) = self_barrier {
                     barrier.wait().await;
                 }
+
+                if let Some(output) = output {
+                    runtime_clone.outputs.write().await.insert(action.id, output);
+                }
+
+                Ok(())
             }));
         }
 
         let results = join_all(handles).await;
 
         for result in results {
-            result.unwrap();
+            result??;
         }
+
+        Ok(())
     }
 }
 
@@ -129,7 +159,14 @@ impl RuntimeBuilder {
     pub fn build(self) -> Runtime {
         Runtime {
             ctx: Arc::new(RwLock::new(self.ctx)),
-            barriers: HashMap::new()
+            barriers: HashMap::new(),
+            outputs: Arc::new(RwLock::new(HashMap::new()))
         }
+    }
+}
+
+impl Default for RuntimeBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }

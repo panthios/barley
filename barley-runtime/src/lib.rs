@@ -11,7 +11,6 @@
 //! [`Context`]: struct.Context.html
 
 use anyhow::Result;
-use tokio::sync::RwLock;
 use uuid::Uuid;
 use std::sync::Arc;
 use async_trait::async_trait;

@@ -13,4 +13,5 @@ async fn main() {
         .build()
         .run()
         .await
+        .unwrap();
 }

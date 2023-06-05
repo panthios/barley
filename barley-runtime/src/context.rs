@@ -1,5 +1,4 @@
-use super::{ActionObject, Id, ActionOutput};
-use std::collections::HashMap;
+use super::ActionObject;
 
 
 /// A context for running actions.
@@ -7,9 +6,7 @@ use std::collections::HashMap;
 /// There should only be one of these per workflow
 #[derive(Default)]
 pub struct Context {
-  pub(crate) actions: Vec<ActionObject>,
-  variables: HashMap<String, String>,
-  outputs: HashMap<Id, ActionOutput>
+  pub(crate) actions: Vec<ActionObject>
 }
 
 impl Context {
@@ -21,9 +18,7 @@ impl Context {
   /// [`Default`]: https://doc.rust-lang.org/std/default/trait.Default.html
   pub fn new() -> Self {
     Self {
-      actions: Vec::new(),
-      variables: HashMap::new(),
-      outputs: HashMap::new(),
+      actions: Vec::new()
     }
   }
 
