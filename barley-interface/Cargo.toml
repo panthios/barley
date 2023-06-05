@@ -14,6 +14,3 @@ edition = "2021"
 barley-runtime = { version = "0.3.0", path = "../barley-runtime" }
 colored = "2"
 tokio = { version = "1.28.1", features = ["sync"] }
-
-[dev-dependencies]
-tokio = { version = "1.28.1", features = ["macros", "rt-multi-thread"] }

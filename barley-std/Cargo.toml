@@ -1,7 +1,15 @@
 [package]
 name = "barley-std"
+description = "The Barley standard library"
+homepage = "https://github.com/panthios/barley"
+repository = "https://github.com/panthios/barley"
+docs = "https://docs.rs/barley-std"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["barley", "standard", "library"]
 version = "0.1.0"
 edition = "2021"
+exclude = ["examples/*", "tests/*", "benches/*"]
 
 [dependencies]
 barley-runtime = { version = "0.3.0", path = "../barley-runtime" }
