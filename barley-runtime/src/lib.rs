@@ -133,7 +133,8 @@ impl ActionObject {
     self.action.rollback(ctx).await
   }
 
-  pub(crate) fn requires(&mut self, action: ActionObject) {
+  /// Add a dependency to the action.
+  pub fn requires(&mut self, action: ActionObject) {
     self.deps.push(action);
   }
 }
@@ -167,6 +168,13 @@ pub trait ContextAbstract {
   /// You can use the returned reference as a
   /// dependency for other actions.
   async fn add_action<A: Action + 'static>(self, action: A) -> ActionObject;
+
+  /// Update an ActionObject
+  /// 
+  /// After updating an action returned from
+  /// `add_action`, you should call this method
+  /// to update the action in the context.
+  async fn update_action(self, action: ActionObject);
 
   /// Run the context.
   /// 
@@ -249,6 +257,18 @@ impl ContextAbstract for Arc<RwLock<Context>> {
     self.write().await.actions.push(action.clone());
 
     action
+  }
+
+  async fn update_action(self, action: ActionObject) {
+    let mut actions = self.write().await.actions.clone();
+
+    for (i, other) in actions.clone().iter().enumerate() {
+      if action.id() == other.id() {
+        actions[i] = action.clone();
+      }
+    }
+
+    self.write().await.actions = actions;
   }
 
   async fn run(self) -> Result<()> {

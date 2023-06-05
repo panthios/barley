@@ -14,7 +14,7 @@ use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-  let mut interface = Interface::new();
+  let interface = Interface::new();
   let sleep = Sleep::new(Duration::from_secs(1));
 
   interface.add_action(sleep).await;

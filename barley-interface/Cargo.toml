@@ -7,7 +7,7 @@ homepage = "https://github.com/panthios/barley"
 documentation = "https://docs.rs/barley-interface"
 readme = "README.md"
 keywords = ["barley", "runtime", "interface"]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]

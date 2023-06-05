@@ -40,6 +40,11 @@ impl Interface {
         self.ctx.clone().add_action(action).await
     }
 
+    /// Update an ActionObject.
+    pub async fn update_action(&self, action: ActionObject) {
+        self.ctx.clone().update_action(action).await
+    }
+
     /// Run the context.
     pub async fn run(&self) -> Result<()> {
         self.ctx.clone().run().await

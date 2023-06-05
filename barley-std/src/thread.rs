@@ -32,6 +32,6 @@ impl Action for Sleep {
     }
 
     fn display_name(&self) -> String {
-        "".to_string()
+        format!("Sleep for {:?}", self.duration)
     }
 }
