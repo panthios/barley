@@ -18,17 +18,20 @@ Barley is a simple and lightweight scripting framework. Using Rust's safety guar
 ```rust
 use barley_interface::Interface;
 use barley_runtime::*;
-use barley_utils::time::{Sleep, Duration};
+use barley_std::thread::Sleep;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {
   let mut interface = Interface::new();
 
   let wait_1s = Sleep::new(Duration::from_secs(1));
-  let mut wait_2s = Sleep::new(Duration::from_secs(2));
+  let wait_2s = Sleep::new(Duration::from_secs(2));
 
-  wait_2s.requires(interface.add_action(wait_1s).await);
-  interface.add_action(wait_2s).await;
+  let wait_1s = interface.add_action(wait_1s);
+  let mut wait_2s = interface.add_action(wait_2s);
+
+  wait_2s.requires(wait_1s);
 
   interface.run().await
 }
@@ -37,28 +40,25 @@ async fn main() -> Result<()> {
 ### Writing a command
 
 ```rust
-use barley_runtime::*;
+use barley_runtime::prelude::*;
 use async_trait::async_trait;
 
-#[barley_action]
-#[derive(Default)]
 pub struct Print {
   message: String
 }
 
-#[barley_action]
 #[async_trait]
 impl Action for Print {
-  async fn check(&mut self, ctx: &mut Context) -> Result<bool> {
+  async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
     Ok(false)
   }
 
-  async fn perform(&mut self, ctx: &mut Context) -> Result<()> {
+  async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
     println!("{}", self.message);
-    Ok(())
+    Ok(None)
   }
 
-  async fn rollback(&mut self, ctx: &mut Context) -> Result<()> {
+  async fn rollback(&self, ctx: Arc<RwLock<Context>>) -> Result<()> {
     Ok(())
   }
 }

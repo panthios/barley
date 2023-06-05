@@ -9,7 +9,8 @@ This crate does not provide any interactive features, as that would defeat the p
 ```rust
 use barley_interface::Interface;
 use barley_runtime::*;
-use barley_utils::time::{Sleep, Duration};
+use barley_std::thread::Sleep;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {
