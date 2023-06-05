@@ -106,6 +106,10 @@ impl ActionObject {
 
   #[async_recursion]
   pub(crate) async fn check_deps(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
+    if self.check(ctx.clone()).await? {
+      return Ok(true)
+    }
+
     let deps = self.deps.clone();
 
     for dep in deps.clone() {
