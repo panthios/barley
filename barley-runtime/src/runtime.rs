@@ -3,6 +3,7 @@ use tokio::sync::RwLock;
 use tokio::sync::Barrier;
 use anyhow::Result;
 use tokio::task::JoinHandle;
+use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
 
 use std::{
     sync::Arc,
@@ -33,7 +34,8 @@ use crate::{
 pub struct Runtime {
     ctx: Arc<RwLock<Context>>,
     barriers: HashMap<Id, Arc<Barrier>>,
-    outputs: Arc<RwLock<HashMap<Id, ActionOutput>>>
+    outputs: Arc<RwLock<HashMap<Id, ActionOutput>>>,
+    progress: Arc<RwLock<MultiProgress>>
 }
 
 impl Runtime {
@@ -71,9 +73,19 @@ impl Runtime {
         }
 
         let mut handles: Vec<JoinHandle<Result<()>>> = Vec::new();
+        let bars = Arc::new(RwLock::new(Vec::new()));
+        let bars_clone = bars.clone();
+
+        let tick_loop = tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                bars_clone.write().await.iter().for_each(|bar: &ProgressBar| bar.tick());
+            }
+        });
 
         for action in actions {
             let runtime_clone = self.clone();
+            let bars = bars.clone();
 
             let action = action.clone();
 
@@ -102,15 +114,19 @@ impl Runtime {
 
                 let display_name = action.display_name();
 
-                println!("Running action: {}", display_name);
+                let progress = runtime_clone.progress.write().await.add(ProgressBar::new_spinner());
+                progress.set_style(ProgressStyle::default_spinner().template(" {spinner} [{elapsed_precise}] {wide_msg}")?);
+                progress.set_message(display_name.clone());
+                bars.write().await.push(progress.clone());
+
                 let output = action.perform(runtime_clone.clone()).await;
 
                 if output.is_err() {
-                    println!("Action failed: {}", display_name);
+                    progress.finish_with_message(format!("Error: {}", display_name));
                     return Err(output.err().unwrap())
                 }
 
-                println!("Action finished: {}", display_name);
+                progress.finish_and_clear();
 
                 let output = output.unwrap();
 
@@ -160,7 +176,8 @@ impl RuntimeBuilder {
         Runtime {
             ctx: Arc::new(RwLock::new(self.ctx)),
             barriers: HashMap::new(),
-            outputs: Arc::new(RwLock::new(HashMap::new()))
+            outputs: Arc::new(RwLock::new(HashMap::new())),
+            progress: Arc::new(RwLock::new(MultiProgress::new()))
         }
     }
 }
