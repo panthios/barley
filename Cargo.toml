@@ -16,8 +16,6 @@ toml = "0.7.4"
 [workspace]
 members = [
   "barley-runtime",
-  "barley-utils",
   "barley-proc",
-  "barley-interface",
-  "examples"
+  "barley-interface"
 ]

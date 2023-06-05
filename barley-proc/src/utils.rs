@@ -112,7 +112,6 @@ fn revise_rollback(func: &ImplItemFn) {
       sig.ident, "The `rollback` method cannot be empty";
       help = "If this action is not implemented, return `Ok(())`"
     );
-    return;
   }
 }
 

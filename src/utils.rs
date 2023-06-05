@@ -22,7 +22,7 @@ pub struct Context {
 impl Context {
   pub fn new(path: Option<PathBuf>) -> Result<Self> {
     let curdir = current_dir()
-      .or_else(|_| Err(anyhow!("Failed to get current directory")))?;
+      .map_err(|_| anyhow!("Failed to get current directory"))?;
 
     let path = match path {
       Some(path) => curdir.join(path),
@@ -31,7 +31,7 @@ impl Context {
 
     if !path.exists() {
       fs::create_dir_all(&path)
-        .or_else(|_| Err(anyhow!("Failed to create directory")))?;
+        .map_err(|_| anyhow!("Failed to create directory"))?;
     }
 
     Ok(Self { path })
@@ -49,7 +49,7 @@ impl Context {
   pub fn is_empty(&self) -> Result<bool> {
     let is_empty = {
       let mut entries = fs::read_dir(&self.path)
-        .or_else(|_| Err(anyhow!("Failed to read current directory")))?;
+        .map_err(|_| anyhow!("Failed to read current directory"))?;
 
       entries.next().is_none()
     };
@@ -94,10 +94,10 @@ impl Context {
 
   pub fn barley_config(&self) -> Result<schema::Config> {
     let barley_toml = fs::read_to_string(self.path.join("barley.toml"))
-      .or_else(|_| Err(anyhow!("Failed to read barley.toml")))?;
+      .map_err(|_| anyhow!("Failed to read barley.toml"))?;
 
     let config: schema::Config = toml::from_str(&barley_toml)
-      .or_else(|_| Err(anyhow!("Failed to parse barley.toml")))?;
+      .map_err(|_| anyhow!("Failed to parse barley.toml"))?;
 
     Ok(config)
   }
@@ -108,64 +108,64 @@ impl Context {
     }
 
     let lockfile_toml = fs::read_to_string(self.path.join("barley.lock"))
-      .or_else(|_| Err(anyhow!("Failed to read barley.lock")))?;
+      .map_err(|_| anyhow!("Failed to read barley.lock"))?;
 
     let lockfile: schema::Lockfile = toml::from_str(&lockfile_toml)
-      .or_else(|_| Err(anyhow!("Failed to parse barley.lock")))?;
+      .map_err(|_| anyhow!("Failed to parse barley.lock"))?;
 
     Ok(lockfile)
   }
 
   pub fn cargo_config(&self) -> Result<Manifest> {
     let cargo_toml = fs::read_to_string(self.path.join("Cargo.toml"))
-      .or_else(|_| Err(anyhow!("Failed to read Cargo.toml")))?;
+      .map_err(|_| anyhow!("Failed to read Cargo.toml"))?;
 
     let cargo: Manifest = toml::from_str(&cargo_toml)
-      .or_else(|_| Err(anyhow!("Failed to parse Cargo.toml")))?;
+      .map_err(|_| anyhow!("Failed to parse Cargo.toml"))?;
 
     Ok(cargo)
   }
 
   pub fn set_barley_config(&self, config: schema::Config) -> Result<&Self> {
     let barley_toml = toml::to_string(&config)
-      .or_else(|_| Err(anyhow!("Failed to serialize barley.toml")))?;
+      .map_err(|_| anyhow!("Failed to serialize barley.toml"))?;
 
     fs::write(self.path.join("barley.toml"), barley_toml)
-      .or_else(|_| Err(anyhow!("Failed to write barley.toml")))?;
+      .map_err(|_| anyhow!("Failed to write barley.toml"))?;
 
     Ok(self)
   }
 
   pub fn set_barley_lockfile(&self, lockfile: schema::Lockfile) -> Result<&Self> {
     let lockfile_toml = toml::to_string(&lockfile)
-      .or_else(|_| Err(anyhow!("Failed to serialize barley.lock")))?;
+      .map_err(|_| anyhow!("Failed to serialize barley.lock"))?;
 
     fs::write(self.path.join("barley.lock"), lockfile_toml)
-      .or_else(|_| Err(anyhow!("Failed to write barley.lock")))?;
+      .map_err(|_| anyhow!("Failed to write barley.lock"))?;
 
     Ok(self)
   }
 
   pub fn set_cargo_config(&self, cargo: Manifest) -> Result<&Self> {
     let cargo_toml = toml::to_string(&cargo)
-      .or_else(|_| Err(anyhow!("Failed to serialize Cargo.toml")))?;
+      .map_err(|_| anyhow!("Failed to serialize Cargo.toml"))?;
 
     fs::write(self.path.join("Cargo.toml"), cargo_toml)
-      .or_else(|_| Err(anyhow!("Failed to write Cargo.toml")))?;
+      .map_err(|_| anyhow!("Failed to write Cargo.toml"))?;
 
     Ok(self)
   }
 
   pub fn create_dir<P: AsRef<Path>>(&self, name: P) -> Result<&Self> {
     fs::create_dir_all(self.path.join(name))
-      .or_else(|_| Err(anyhow!("Failed to create directory")))?;
+      .map_err(|_| anyhow!("Failed to create directory"))?;
 
     Ok(self)
   }
 
   pub fn write_file<P: AsRef<Path>>(&self, name: P, content: &str) -> Result<&Self> {
     fs::write(self.path.join(name), content)
-      .or_else(|_| Err(anyhow!("Failed to write file")))?;
+      .map_err(|_| anyhow!("Failed to write file"))?;
 
     Ok(self)
   }

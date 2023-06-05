@@ -273,9 +273,7 @@ impl ContextAbstract for Arc<RwLock<Context>> {
     let results = join_all(handles).await;
 
     for result in results {
-      if let Err(e) = result? {
-        return Err(e)
-      }
+      result??;
     }
 
     Ok(())
@@ -293,7 +291,7 @@ impl ContextAbstract for Arc<RwLock<Context>> {
 
       if let Err(e) = &output {
         if let Some(callback) = callbacks.on_action_failed {
-          callback(action.as_ref(), &e);
+          callback(action.as_ref(), e);
         }
 
         return output

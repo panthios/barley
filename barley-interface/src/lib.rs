@@ -70,7 +70,6 @@ impl Interface {
 
         if !display_name.is_empty() {
             println!("{} {}", "[STARTED]".yellow(), display_name);
-            return;
         }
     }
 
@@ -79,7 +78,6 @@ impl Interface {
 
         if !display_name.is_empty() {
             println!("{} {}", "[FINISHED]".green(), display_name);
-            return;
         }
     }
 
@@ -88,7 +86,12 @@ impl Interface {
 
         if !display_name.is_empty() {
             println!("{} {}", "[FAILED]".red(), display_name);
-            return;
         }
+    }
+}
+
+impl Default for Interface {
+    fn default() -> Self {
+        Self::new()
     }
 }
