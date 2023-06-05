@@ -1,22 +1,29 @@
 use barley_runtime::prelude::*;
+use tokio::time::{sleep, Duration};
 
 
-#[derive(Default)]
-pub struct Join;
 
-impl Join {
-    pub fn new() -> Self {
-        Self {}
+pub struct Sleep {
+    duration: Duration,
+}
+
+impl Sleep {
+    pub fn new(duration: Duration) -> Self {
+        Self {
+            duration
+        }
     }
 }
 
 #[async_trait]
-impl Action for Join {
+impl Action for Sleep {
     async fn check(&self, _ctx: Arc<RwLock<Context>>) -> Result<bool> {
         Ok(false)
     }
 
     async fn perform(&self, _ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
+        sleep(self.duration).await;
+
         Ok(None)
     }
 

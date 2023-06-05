@@ -17,6 +17,7 @@ use uuid::Uuid;
 use futures::future::join_all;
 use std::sync::Arc;
 use async_trait::async_trait;
+use async_recursion::async_recursion;
 
 /// The prelude for the `barley-runtime` crate.
 /// 
@@ -46,13 +47,6 @@ pub trait Action: Send + Sync {
   /// skip it.
   async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool>;
 
-  /// Check if the action's dependencies need to be run.
-  /// 
-  /// This method is called internally, and should not
-  /// be called directly. It is used to check if any
-  /// of the action's dependencies need to be run.
-  async fn check_deps(&self, ctx: Arc<RwLock<Context>>) -> Result<bool>;
-
   /// Run the action.
   async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>>;
 
@@ -63,39 +57,89 @@ pub trait Action: Send + Sync {
   /// version of Barley.
   async fn rollback(&self, ctx: Arc<RwLock<Context>>) -> Result<()>;
 
-  /// Get the action's ID.
-  fn id(&self) -> Id;
-
-  /// Add a direct dependency to the action.
-  /// 
-  /// This action will not run until the dependency
-  /// has been run. This behavior is 100% guaranteed
-  /// by the engine.
-  fn requires(&mut self, action: Arc<dyn Action>);
-
   /// Get the display name of the action.
   fn display_name(&self) -> String;
-
-  /// Get a list of dependencies.
-  /// 
-  /// This method is used internally, and should not
-  /// be called directly. Dependencies are automatically
-  /// handled by the engine.
-  fn deps(&self) -> Vec<Arc<dyn Action>>;
 }
 
-/// An action object.
+/// A usable action object.
 /// 
-/// This is just a type alias, and does
-/// not add any functionality.
-pub type ActionObject = Arc<dyn Action + 'static>;
+/// This struct is used by actions to store their
+/// dependencies and identification. It should
+/// not be constructed directly, unless you are
+/// writing a custom Action.
+#[derive(Clone)]
+pub struct ActionObject {
+  action: Arc<dyn Action>,
+  deps: Vec<ActionObject>,
+  id: Id
+}
+
+impl ActionObject {
+  /// Create a new action object.
+  /// 
+  /// This method should not be called directly,
+  /// unless you are writing a custom Action.
+  pub fn new(action: Arc<dyn Action>) -> Self {
+    Self {
+      action,
+      deps: Vec::new(),
+      id: Id::default()
+    }
+  }
+
+  /// Get the display name of the action.
+  pub fn display_name(&self) -> String {
+    self.action.display_name()
+  }
+
+  pub(crate) fn id(&self) -> Id {
+    self.id
+  }
+
+  pub(crate) fn deps(&self) -> Vec<ActionObject> {
+    self.deps.clone()
+  }
+
+  pub(crate) async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
+    self.action.check(ctx).await
+  }
+
+  #[async_recursion]
+  pub(crate) async fn check_deps(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
+    let deps = self.deps.clone();
+
+    for dep in deps.clone() {
+      if !dep.check_deps(ctx.clone()).await? {
+        return Ok(false)
+      }
+    }
+
+    Ok(true)
+  }
+
+  pub(crate) async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
+    if self.check(ctx.clone()).await? {
+      return Ok(None)
+    }
+
+    self.action.perform(ctx).await
+  }
+
+  pub(crate) async fn rollback(&self, ctx: Arc<RwLock<Context>>) -> Result<()> {
+    self.action.rollback(ctx).await
+  }
+
+  pub(crate) fn requires(&mut self, action: ActionObject) {
+    self.deps.push(action);
+  }
+}
 
 /// A context for running actions.
 /// 
 /// There should only be one of these per workflow
 #[derive(Default)]
 pub struct Context {
-  actions: Vec<Arc<dyn Action + 'static>>,
+  actions: Vec<ActionObject>,
   variables: HashMap<String, String>,
   callbacks: ContextCallbacks,
   outputs: HashMap<Id, ActionOutput>,
@@ -118,7 +162,7 @@ pub trait ContextAbstract {
   /// 
   /// You can use the returned reference as a
   /// dependency for other actions.
-  async fn add_action<A: Action + 'static>(self, action: A) -> Arc<dyn Action + 'static>;
+  async fn add_action<A: Action + 'static>(self, action: A) -> ActionObject;
 
   /// Run the context.
   /// 
@@ -132,7 +176,7 @@ pub trait ContextAbstract {
   /// be called directly. It is used to run
   /// individual actions, and to check if their
   /// outputs are available and successful.
-  async fn run_action(self, action: Arc<dyn Action>) -> Result<Option<ActionOutput>>;
+  async fn run_action(self, action: ActionObject) -> Result<Option<ActionOutput>>;
 
   /// Sets a variable in the context.
   /// 
@@ -154,7 +198,7 @@ pub trait ContextAbstract {
   /// reasonable way. Actions could fetch the ID of the
   /// current action, and use that to access the variable,
   /// but that's voodoo magic and you shouldn't do it.
-  async fn set_local(self, action: &dyn Action, name: &str, value: &str);
+  async fn set_local(self, action: ActionObject, name: &str, value: &str);
 
   /// Gets a local variable for the action.
   /// 
@@ -163,7 +207,7 @@ pub trait ContextAbstract {
   /// reasonable way. Actions could fetch the ID of the
   /// current action, and use that to access the variable,
   /// but that's voodoo magic and you shouldn't do it.
-  async fn get_local(self, action: &dyn Action, name: &str) -> Option<String>;
+  async fn get_local(self, action: ActionObject, name: &str) -> Option<String>;
 
   /// Gets the output of the action.
   /// 
@@ -171,16 +215,7 @@ pub trait ContextAbstract {
   /// `None`, regardless of the action's value after running
   /// it. If you are using this outside of an action, you
   /// should only use it after the context has been run.
-  async fn get_output(self, action: &dyn Action) -> Option<ActionOutput>;
-
-  /// Gets the output of an action Arc
-  /// 
-  /// This should be used instead of [`Context::get_output`]
-  /// if you have an [`Arc`] to the action.
-  /// 
-  /// [`Context::get_output`]: struct.Context.html#method.get_output
-  /// [`Arc`]: https://doc.rust-lang.org/std/sync/struct.Arc.html
-  async fn get_output_arc(self, action: Arc<dyn Action>) -> Option<ActionOutput>;
+  async fn get_output(self, action: ActionObject) -> Option<ActionOutput>;
 }
 
 impl Context {
@@ -203,8 +238,9 @@ impl Context {
 
 #[async_trait]
 impl ContextAbstract for Arc<RwLock<Context>> {
-  async fn add_action<A: Action + 'static>(self, action: A) -> Arc<dyn Action> {
+  async fn add_action<A: Action + 'static>(self, action: A) -> ActionObject {
     let action = Arc::new(action);
+    let action = ActionObject::new(action.clone());
 
     self.write().await.actions.push(action.clone());
 
@@ -279,26 +315,26 @@ impl ContextAbstract for Arc<RwLock<Context>> {
     Ok(())
   }
 
-  async fn run_action(self, action: Arc<dyn Action>) -> Result<Option<ActionOutput>> {
+  async fn run_action(self, action: ActionObject) -> Result<Option<ActionOutput>> {
     let callbacks = self.clone().read().await.callbacks.clone();
 
     if !action.check(self.clone()).await? {
       if let Some(callback) = callbacks.on_action_started {
-        callback(action.as_ref());
+        callback(action.clone());
       }
 
       let output = action.perform(self.clone()).await;
 
       if let Err(e) = &output {
         if let Some(callback) = callbacks.on_action_failed {
-          callback(action.as_ref(), e);
+          callback(action, e);
         }
 
         return output
       }
 
       if let Some(callback) = callbacks.on_action_finished {
-        callback(action.as_ref());
+        callback(action.clone());
       }
 
       if let Some(output) = output.unwrap() {
@@ -320,19 +356,15 @@ impl ContextAbstract for Arc<RwLock<Context>> {
     self.read().await.variables.get(name).cloned()
   }
 
-  async fn set_local(self, action: &dyn Action, name: &str, value: &str) {
+  async fn set_local(self, action: ActionObject, name: &str, value: &str) {
     self.set_variable(&format!("{}::{}", action.id(), name), value).await;
   }
 
-  async fn get_local(self, action: &dyn Action, name: &str) -> Option<String> {
+  async fn get_local(self, action: ActionObject, name: &str) -> Option<String> {
     self.get_variable(&format!("{}::{}", action.id(), name)).await
   }
 
-  async fn get_output(self, action: &dyn Action) -> Option<ActionOutput> {
-    self.read().await.outputs.get(&action.id()).cloned()
-  }
-
-  async fn get_output_arc(self, action: Arc<dyn Action>) -> Option<ActionOutput> {
+  async fn get_output(self, action: ActionObject) -> Option<ActionOutput> {
     self.read().await.outputs.get(&action.id()).cloned()
   }
 }
@@ -344,11 +376,11 @@ impl ContextAbstract for Arc<RwLock<Context>> {
 #[derive(Default, Clone)]
 pub struct ContextCallbacks {
   /// Called when an action is started.
-  pub on_action_started: Option<fn(&dyn Action)>,
+  pub on_action_started: Option<fn(ActionObject)>,
   /// Called when an action is completed successfully.
-  pub on_action_finished: Option<fn(&dyn Action)>,
+  pub on_action_finished: Option<fn(ActionObject)>,
   /// Called when an action fails.
-  pub on_action_failed: Option<fn(&dyn Action, &anyhow::Error)>
+  pub on_action_failed: Option<fn(ActionObject, &anyhow::Error)>
 }
 
 /// A unique identifier for an action.

@@ -178,8 +178,6 @@ pub fn add_funcs(ast: &mut ItemImpl) {
     }
   };
 
-  ast.items.push(syn::ImplItem::Fn(check_deps));
   ast.items.push(syn::ImplItem::Fn(id));
-  ast.items.push(syn::ImplItem::Fn(requires));
   ast.items.push(syn::ImplItem::Fn(deps));
 }

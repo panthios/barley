@@ -36,7 +36,7 @@ impl Interface {
     }
 
     /// Add an action to the context.
-    pub async fn add_action<A: Action + 'static>(&self, action: A) -> Arc<dyn Action + 'static> {
+    pub async fn add_action<A: Action + 'static>(&self, action: A) -> ActionObject {
         self.ctx.clone().add_action(action).await
     }
 
@@ -52,20 +52,11 @@ impl Interface {
     /// for more information.
     /// 
     /// [`Context::get_output`]: https://docs.rs/barley-runtime/latest/barley_runtime/struct.Context.html#method.get_output
-    pub async fn get_output(&self, action: &dyn Action) -> Option<ActionOutput> {
+    pub async fn get_output(&self, action: ActionObject) -> Option<ActionOutput> {
         self.ctx.clone().get_output(action).await
     }
 
-    /// Gets the output of an action Arc.
-    /// 
-    /// See [`Context::get_output_arc`] for more information.
-    /// 
-    /// [`Context::get_output_arc`]: https://docs.rs/barley-runtime/latest/barley_runtime/struct.Context.html#method.get_output_arc
-    pub async fn get_output_arc(&self, action: Arc<dyn Action + 'static>) -> Option<ActionOutput> {
-        self.ctx.clone().get_output_arc(action).await
-    }
-
-    pub(crate) fn on_action_started(action: &dyn Action) {
+    pub(crate) fn on_action_started(action: ActionObject) {
         let display_name = action.display_name();
 
         if !display_name.is_empty() {
@@ -73,7 +64,7 @@ impl Interface {
         }
     }
 
-    pub(crate) fn on_action_finished(action: &dyn Action) {
+    pub(crate) fn on_action_finished(action: ActionObject) {
         let display_name = action.display_name();
 
         if !display_name.is_empty() {
@@ -81,7 +72,7 @@ impl Interface {
         }
     }
 
-    pub(crate) fn on_action_failed(action: &dyn Action, _err: &Error) {
+    pub(crate) fn on_action_failed(action: ActionObject, _err: &Error) {
         let display_name = action.display_name();
 
         if !display_name.is_empty() {
