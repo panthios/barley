@@ -11,10 +11,8 @@
 //! [`Context`]: struct.Context.html
 
 use anyhow::Result;
-use tokio::sync::{RwLock, Barrier};
-use std::collections::HashMap;
+use tokio::sync::RwLock;
 use uuid::Uuid;
-use futures::future::join_all;
 use std::sync::Arc;
 use async_trait::async_trait;
 use async_recursion::async_recursion;
@@ -26,6 +24,11 @@ use async_recursion::async_recursion;
 /// should be used instead of importing the types
 /// directly.
 pub mod prelude;
+
+mod context;
+mod runtime;
+
+pub use runtime::{Runtime, RuntimeBuilder};
 
 /// A measurable, reversible task.
 /// 
@@ -45,17 +48,17 @@ pub trait Action: Send + Sync {
   /// proceed to run it. If this method returns `true`,
   /// the action has already run, and the engine will
   /// skip it.
-  async fn check(&self, ctx: Arc<RwLock<Runtime>>) -> Result<bool>;
+  async fn check(&self, runtime: Runtime) -> Result<bool>;
 
   /// Run the action.
-  async fn perform(&self, ctx: Arc<RwLock<Runtime>>) -> Result<Option<ActionOutput>>;
+  async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>>;
 
   /// Undo the action.
   /// 
   /// This is not currently possible, and will not
   /// do anything. This will be usable in a future
   /// version of Barley.
-  async fn rollback(&self, ctx: Arc<RwLock<Runtime>>) -> Result<()>;
+  async fn rollback(&self, runtime: Runtime) -> Result<()>;
 
   /// Get the display name of the action.
   fn display_name(&self) -> String;
@@ -100,12 +103,12 @@ impl ActionObject {
     self.deps.clone()
   }
 
-  pub(crate) async fn check(&self, ctx: Arc<RwLock<Runtime>>) -> Result<bool> {
+  pub(crate) async fn check(&self, ctx: Runtime) -> Result<bool> {
     self.action.check(ctx).await
   }
 
   #[async_recursion]
-  pub(crate) async fn check_deps(&self, ctx: Arc<RwLock<Runtime>>) -> Result<bool> {
+  pub(crate) async fn check_deps(&self, ctx: Runtime) -> Result<bool> {
     if self.check(ctx.clone()).await? {
       return Ok(true)
     }
@@ -121,15 +124,15 @@ impl ActionObject {
     Ok(true)
   }
 
-  pub(crate) async fn perform(&self, ctx: Arc<RwLock<Runtime>>) -> Result<Option<ActionOutput>> {
-    if self.check(ctx.clone()).await? {
+  pub(crate) async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>> {
+    if self.check(runtime.clone()).await? {
       return Ok(None)
     }
 
-    self.action.perform(ctx).await
+    self.action.perform(runtime).await
   }
 
-  pub(crate) async fn rollback(&self, ctx: Arc<RwLock<Runtime>>) -> Result<()> {
+  pub(crate) async fn rollback(&self, ctx: Runtime) -> Result<()> {
     self.action.rollback(ctx).await
   }
 
@@ -139,242 +142,12 @@ impl ActionObject {
   }
 }
 
-/// A context for running actions.
-/// 
-/// There should only be one of these per workflow
-#[derive(Default)]
-pub struct Runtime {
-  actions: Vec<ActionObject>,
-  variables: HashMap<String, String>,
-  outputs: HashMap<Id, ActionOutput>,
-  barriers: HashMap<Id, Arc<Barrier>>
-}
-
-/// The abstract interface for a context.
-/// 
-/// This should always be used in any program using
-/// Barley, but it should never be implemented
-/// directly. Use the `barley-interface` crate
-/// instead.
-#[async_trait]
-pub trait RuntimeAbstract {
-  /// Add an action to the context.
-  /// 
-  /// This method adds an action to the context, and
-  /// returns a reference to the action. The action
-  /// will be run when the context is run.
-  /// 
-  /// You can use the returned reference as a
-  /// dependency for other actions.
-  async fn add_action<A: Action + 'static>(&mut self, action: A) -> ActionObject;
-
-  /// Update an ActionObject
-  /// 
-  /// After updating an action returned from
-  /// `add_action`, you should call this method
-  /// to update the action in the context.
-  async fn update_action(&mut self, action: ActionObject);
-
-  /// Run the context.
-  /// 
-  /// While processing the actions, it will
-  /// call the callbacks if they are set.
-  async fn run(self) -> Result<()>;
-
-  /// Run an individual action.
-  /// 
-  /// This is called internally, and should not
-  /// be called directly. It is used to run
-  /// individual actions, and to check if their
-  /// outputs are available and successful.
-  async fn run_action(&mut self, action: ActionObject) -> Result<Option<ActionOutput>>;
-
-  /// Sets a variable in the context.
-  /// 
-  /// This can be used to send information between
-  /// actions. For example, you could set a return code
-  /// in one action, and check it in another.
-  async fn set_variable(&mut self, name: &str, value: &str);
-
-  /// Gets a variable from the context.
-  /// 
-  /// If the variable doesn't exist, this method
-  /// returns `None`.
-  async fn get_variable(&self, name: &str) -> Option<String>;
-
-  /// Sets a local variable for the action.
-  /// 
-  /// This variable will be namespaced to the action,
-  /// and will not be visible to other actions in any
-  /// reasonable way. Actions could fetch the ID of the
-  /// current action, and use that to access the variable,
-  /// but that's voodoo magic and you shouldn't do it.
-  async fn set_local(&mut self, action: ActionObject, name: &str, value: &str);
-
-  /// Gets a local variable for the action.
-  /// 
-  /// This variable will be namespaced to the action,
-  /// and will not be visible to other actions in any
-  /// reasonable way. Actions could fetch the ID of the
-  /// current action, and use that to access the variable,
-  /// but that's voodoo magic and you shouldn't do it.
-  async fn get_local(&self, action: ActionObject, name: &str) -> Option<String>;
-
-  /// Gets the output of the action.
-  /// 
-  /// If the action has not been run yet, this will return
-  /// `None`, regardless of the action's value after running
-  /// it. If you are using this outside of an action, you
-  /// should only use it after the context has been run.
-  async fn get_output(&self, action: ActionObject) -> Option<ActionOutput>;
-}
-
-impl Runtime {
-  /// Create a new context with the given callbacks.
-  /// 
-  /// If you don't want any callbacks, it's recommended
-  /// to use the [`Default`] implementation instead.
-  /// 
-  /// [`Default`]: https://doc.rust-lang.org/std/default/trait.Default.html
-  pub fn new() -> Arc<RwLock<Self>> {
-    Arc::new(RwLock::new(Self {
-      actions: Vec::new(),
-      variables: HashMap::new(),
-      outputs: HashMap::new(),
-      barriers: HashMap::new()
-    }))
-  }
-}
-
-#[async_trait]
-impl RuntimeAbstract for Arc<RwLock<Runtime>> {
-  async fn add_action<A: Action + 'static>(&mut self, action: A) -> ActionObject {
-    let action = Arc::new(action);
-    let action = ActionObject::new(action.clone());
-
-    self.write().await.actions.push(action.clone());
-
-    action
-  }
-
-  async fn update_action(&mut self, action: ActionObject) {
-    let mut actions = self.write().await.actions.clone();
-
-    for (i, other) in actions.clone().iter().enumerate() {
-      if action.id() == other.id() {
-        actions[i] = action.clone();
-      }
-    }
-
-    self.write().await.actions = actions;
-  }
-
-  async fn run(self) -> Result<()> {
-    let mut actions = self.read().await.actions.clone();
-    let mut dependents: HashMap<Id, usize> = HashMap::new();
-
-    for action in actions.clone() {
-      dependents.insert(action.id(), 0);
-
-      let deps = action.clone().deps()
-        .iter().map(|a| a.id()).collect::<Vec<_>>();
-
-      for dep in deps {
-        dependents.insert(dep, dependents.get(&dep).unwrap_or(&0) + 1);
-      }
-    }
-
-    for (id, revdeps) in dependents.clone() {
-      if revdeps == 0 {
-        continue
-      }
-
-      self.clone().write().await
-        .barriers.insert(id, Arc::new(Barrier::new(revdeps + 1)));
-    }
-
-    actions.sort_by(|a, b| {
-      let a_revdeps = dependents.get(&a.id()).unwrap_or(&0);
-      let b_revdeps = dependents.get(&b.id()).unwrap_or(&0);
-
-      a_revdeps.cmp(b_revdeps)
-    });
-
-    let mut handles = Vec::new();
-    for action in actions {
-      let mut ctx = self.clone();
-      let action = action.clone();
-
-      let dep_ids = action.clone().deps()
-        .iter().map(|a| a.id()).collect::<Vec<_>>();
-      let barriers = ctx.clone().read().await.barriers.clone();
-      let dep_barriers = dep_ids.iter()
-        .map(|id| barriers.get(id).unwrap().clone())
-        .collect::<Vec<_>>();
-      let self_barrier = barriers.get(&action.id()).cloned();
-
-      handles.push(tokio::spawn(async move {
-        for barrier in dep_barriers {
-          barrier.wait().await;
-        }
-
-        let res = ctx.run_action(action).await;
-
-        if let Some(barrier) = self_barrier {
-          barrier.wait().await;
-        }
-
-        res
-      }))
-    }
-
-    let results = join_all(handles).await;
-
-    for result in results {
-      result??;
-    }
-
-    Ok(())
-  }
-
-  async fn run_action(&mut self, action: ActionObject) -> Result<Option<ActionOutput>> {
-    if !action.check(self.clone()).await? {
-
-      let output = action.perform(self.clone()).await;
-
-      if let Err(e) = &output {
-        return output
-      }
-
-      if let Some(output) = output.unwrap() {
-        self.clone().write().await.outputs.insert(action.id(), output.clone());
-        Ok(Some(output))
-      } else {
-        Ok(None)
-      }
-    } else {
-      Ok(self.clone().write().await.outputs.get(&action.id()).cloned())
-    }
-  }
-
-  async fn set_variable(&mut self, name: &str, value: &str) {
-    self.write().await.variables.insert(name.to_string(), value.to_string());
-  }
-
-  async fn get_variable(&self, name: &str) -> Option<String> {
-    self.read().await.variables.get(name).cloned()
-  }
-
-  async fn set_local(&mut self, action: ActionObject, name: &str, value: &str) {
-    self.set_variable(&format!("{}::{}", action.id(), name), value).await;
-  }
-
-  async fn get_local(&self, action: ActionObject, name: &str) -> Option<String> {
-    self.get_variable(&format!("{}::{}", action.id(), name)).await
-  }
-
-  async fn get_output(&self, action: ActionObject) -> Option<ActionOutput> {
-    self.read().await.outputs.get(&action.id()).cloned()
+impl<A> From<A> for ActionObject
+where
+  A: Action + 'static
+{
+  fn from(action: A) -> Self {
+    Self::new(Arc::new(action))
   }
 }
 

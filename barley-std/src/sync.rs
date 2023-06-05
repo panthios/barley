@@ -12,15 +12,15 @@ impl Join {
 
 #[async_trait]
 impl Action for Join {
-    async fn check(&self, _ctx: Arc<RwLock<Runtime>>) -> Result<bool> {
+    async fn check(&self, _ctx: Runtime) -> Result<bool> {
         Ok(false)
     }
 
-    async fn perform(&self, _ctx: Arc<RwLock<Runtime>>) -> Result<Option<ActionOutput>> {
+    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>> {
         Ok(None)
     }
 
-    async fn rollback(&self, _ctx: Arc<RwLock<Runtime>>) -> Result<()> {
+    async fn rollback(&self, _ctx: Runtime) -> Result<()> {
         Ok(())
     }
 
