@@ -17,17 +17,17 @@ impl Sleep {
 
 #[async_trait]
 impl Action for Sleep {
-    async fn check(&self, _ctx: Arc<RwLock<Context>>) -> Result<bool> {
+    async fn check(&self, _ctx: Arc<RwLock<Runtime>>) -> Result<bool> {
         Ok(false)
     }
 
-    async fn perform(&self, _ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
+    async fn perform(&self, _ctx: Arc<RwLock<Runtime>>) -> Result<Option<ActionOutput>> {
         sleep(self.duration).await;
 
         Ok(None)
     }
 
-    async fn rollback(&self, _ctx: Arc<RwLock<Context>>) -> Result<()> {
+    async fn rollback(&self, _ctx: Arc<RwLock<Runtime>>) -> Result<()> {
         Ok(())
     }
 

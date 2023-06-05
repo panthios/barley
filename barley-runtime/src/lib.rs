@@ -45,17 +45,17 @@ pub trait Action: Send + Sync {
   /// proceed to run it. If this method returns `true`,
   /// the action has already run, and the engine will
   /// skip it.
-  async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool>;
+  async fn check(&self, ctx: Arc<RwLock<Runtime>>) -> Result<bool>;
 
   /// Run the action.
-  async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>>;
+  async fn perform(&self, ctx: Arc<RwLock<Runtime>>) -> Result<Option<ActionOutput>>;
 
   /// Undo the action.
   /// 
   /// This is not currently possible, and will not
   /// do anything. This will be usable in a future
   /// version of Barley.
-  async fn rollback(&self, ctx: Arc<RwLock<Context>>) -> Result<()>;
+  async fn rollback(&self, ctx: Arc<RwLock<Runtime>>) -> Result<()>;
 
   /// Get the display name of the action.
   fn display_name(&self) -> String;
@@ -100,12 +100,12 @@ impl ActionObject {
     self.deps.clone()
   }
 
-  pub(crate) async fn check(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
+  pub(crate) async fn check(&self, ctx: Arc<RwLock<Runtime>>) -> Result<bool> {
     self.action.check(ctx).await
   }
 
   #[async_recursion]
-  pub(crate) async fn check_deps(&self, ctx: Arc<RwLock<Context>>) -> Result<bool> {
+  pub(crate) async fn check_deps(&self, ctx: Arc<RwLock<Runtime>>) -> Result<bool> {
     if self.check(ctx.clone()).await? {
       return Ok(true)
     }
@@ -121,7 +121,7 @@ impl ActionObject {
     Ok(true)
   }
 
-  pub(crate) async fn perform(&self, ctx: Arc<RwLock<Context>>) -> Result<Option<ActionOutput>> {
+  pub(crate) async fn perform(&self, ctx: Arc<RwLock<Runtime>>) -> Result<Option<ActionOutput>> {
     if self.check(ctx.clone()).await? {
       return Ok(None)
     }
@@ -129,7 +129,7 @@ impl ActionObject {
     self.action.perform(ctx).await
   }
 
-  pub(crate) async fn rollback(&self, ctx: Arc<RwLock<Context>>) -> Result<()> {
+  pub(crate) async fn rollback(&self, ctx: Arc<RwLock<Runtime>>) -> Result<()> {
     self.action.rollback(ctx).await
   }
 
@@ -143,10 +143,9 @@ impl ActionObject {
 /// 
 /// There should only be one of these per workflow
 #[derive(Default)]
-pub struct Context {
+pub struct Runtime {
   actions: Vec<ActionObject>,
   variables: HashMap<String, String>,
-  callbacks: ContextCallbacks,
   outputs: HashMap<Id, ActionOutput>,
   barriers: HashMap<Id, Arc<Barrier>>
 }
@@ -158,7 +157,7 @@ pub struct Context {
 /// directly. Use the `barley-interface` crate
 /// instead.
 #[async_trait]
-pub trait ContextAbstract {
+pub trait RuntimeAbstract {
   /// Add an action to the context.
   /// 
   /// This method adds an action to the context, and
@@ -167,14 +166,14 @@ pub trait ContextAbstract {
   /// 
   /// You can use the returned reference as a
   /// dependency for other actions.
-  async fn add_action<A: Action + 'static>(self, action: A) -> ActionObject;
+  async fn add_action<A: Action + 'static>(&mut self, action: A) -> ActionObject;
 
   /// Update an ActionObject
   /// 
   /// After updating an action returned from
   /// `add_action`, you should call this method
   /// to update the action in the context.
-  async fn update_action(self, action: ActionObject);
+  async fn update_action(&mut self, action: ActionObject);
 
   /// Run the context.
   /// 
@@ -188,20 +187,20 @@ pub trait ContextAbstract {
   /// be called directly. It is used to run
   /// individual actions, and to check if their
   /// outputs are available and successful.
-  async fn run_action(self, action: ActionObject) -> Result<Option<ActionOutput>>;
+  async fn run_action(&mut self, action: ActionObject) -> Result<Option<ActionOutput>>;
 
   /// Sets a variable in the context.
   /// 
   /// This can be used to send information between
   /// actions. For example, you could set a return code
   /// in one action, and check it in another.
-  async fn set_variable(self, name: &str, value: &str);
+  async fn set_variable(&mut self, name: &str, value: &str);
 
   /// Gets a variable from the context.
   /// 
   /// If the variable doesn't exist, this method
   /// returns `None`.
-  async fn get_variable(self, name: &str) -> Option<String>;
+  async fn get_variable(&self, name: &str) -> Option<String>;
 
   /// Sets a local variable for the action.
   /// 
@@ -210,7 +209,7 @@ pub trait ContextAbstract {
   /// reasonable way. Actions could fetch the ID of the
   /// current action, and use that to access the variable,
   /// but that's voodoo magic and you shouldn't do it.
-  async fn set_local(self, action: ActionObject, name: &str, value: &str);
+  async fn set_local(&mut self, action: ActionObject, name: &str, value: &str);
 
   /// Gets a local variable for the action.
   /// 
@@ -219,7 +218,7 @@ pub trait ContextAbstract {
   /// reasonable way. Actions could fetch the ID of the
   /// current action, and use that to access the variable,
   /// but that's voodoo magic and you shouldn't do it.
-  async fn get_local(self, action: ActionObject, name: &str) -> Option<String>;
+  async fn get_local(&self, action: ActionObject, name: &str) -> Option<String>;
 
   /// Gets the output of the action.
   /// 
@@ -227,21 +226,20 @@ pub trait ContextAbstract {
   /// `None`, regardless of the action's value after running
   /// it. If you are using this outside of an action, you
   /// should only use it after the context has been run.
-  async fn get_output(self, action: ActionObject) -> Option<ActionOutput>;
+  async fn get_output(&self, action: ActionObject) -> Option<ActionOutput>;
 }
 
-impl Context {
+impl Runtime {
   /// Create a new context with the given callbacks.
   /// 
   /// If you don't want any callbacks, it's recommended
   /// to use the [`Default`] implementation instead.
   /// 
   /// [`Default`]: https://doc.rust-lang.org/std/default/trait.Default.html
-  pub fn new(callbacks: ContextCallbacks) -> Arc<RwLock<Self>> {
+  pub fn new() -> Arc<RwLock<Self>> {
     Arc::new(RwLock::new(Self {
       actions: Vec::new(),
       variables: HashMap::new(),
-      callbacks,
       outputs: HashMap::new(),
       barriers: HashMap::new()
     }))
@@ -249,8 +247,8 @@ impl Context {
 }
 
 #[async_trait]
-impl ContextAbstract for Arc<RwLock<Context>> {
-  async fn add_action<A: Action + 'static>(self, action: A) -> ActionObject {
+impl RuntimeAbstract for Arc<RwLock<Runtime>> {
+  async fn add_action<A: Action + 'static>(&mut self, action: A) -> ActionObject {
     let action = Arc::new(action);
     let action = ActionObject::new(action.clone());
 
@@ -259,7 +257,7 @@ impl ContextAbstract for Arc<RwLock<Context>> {
     action
   }
 
-  async fn update_action(self, action: ActionObject) {
+  async fn update_action(&mut self, action: ActionObject) {
     let mut actions = self.write().await.actions.clone();
 
     for (i, other) in actions.clone().iter().enumerate() {
@@ -304,7 +302,7 @@ impl ContextAbstract for Arc<RwLock<Context>> {
 
     let mut handles = Vec::new();
     for action in actions {
-      let ctx = self.clone();
+      let mut ctx = self.clone();
       let action = action.clone();
 
       let dep_ids = action.clone().deps()
@@ -339,26 +337,13 @@ impl ContextAbstract for Arc<RwLock<Context>> {
     Ok(())
   }
 
-  async fn run_action(self, action: ActionObject) -> Result<Option<ActionOutput>> {
-    let callbacks = self.clone().read().await.callbacks.clone();
-
+  async fn run_action(&mut self, action: ActionObject) -> Result<Option<ActionOutput>> {
     if !action.check(self.clone()).await? {
-      if let Some(callback) = callbacks.on_action_started {
-        callback(action.clone());
-      }
 
       let output = action.perform(self.clone()).await;
 
       if let Err(e) = &output {
-        if let Some(callback) = callbacks.on_action_failed {
-          callback(action, e);
-        }
-
         return output
-      }
-
-      if let Some(callback) = callbacks.on_action_finished {
-        callback(action.clone());
       }
 
       if let Some(output) = output.unwrap() {
@@ -372,23 +357,23 @@ impl ContextAbstract for Arc<RwLock<Context>> {
     }
   }
 
-  async fn set_variable(self, name: &str, value: &str) {
+  async fn set_variable(&mut self, name: &str, value: &str) {
     self.write().await.variables.insert(name.to_string(), value.to_string());
   }
 
-  async fn get_variable(self, name: &str) -> Option<String> {
+  async fn get_variable(&self, name: &str) -> Option<String> {
     self.read().await.variables.get(name).cloned()
   }
 
-  async fn set_local(self, action: ActionObject, name: &str, value: &str) {
+  async fn set_local(&mut self, action: ActionObject, name: &str, value: &str) {
     self.set_variable(&format!("{}::{}", action.id(), name), value).await;
   }
 
-  async fn get_local(self, action: ActionObject, name: &str) -> Option<String> {
+  async fn get_local(&self, action: ActionObject, name: &str) -> Option<String> {
     self.get_variable(&format!("{}::{}", action.id(), name)).await
   }
 
-  async fn get_output(self, action: ActionObject) -> Option<ActionOutput> {
+  async fn get_output(&self, action: ActionObject) -> Option<ActionOutput> {
     self.read().await.outputs.get(&action.id()).cloned()
   }
 }
