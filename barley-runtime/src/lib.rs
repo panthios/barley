@@ -199,6 +199,80 @@ pub enum ActionOutput {
   Boolean(bool)
 }
 
+impl TryFrom<ActionOutput> for String {
+  type Error = anyhow::Error;
+
+  fn try_from(value: ActionOutput) -> Result<Self, Self::Error> {
+    match value {
+      ActionOutput::String(value) => Ok(value),
+      _ => Err(anyhow::anyhow!("Could not convert ActionOutput to String"))
+    }
+  }
+}
+
+impl TryFrom<ActionOutput> for i64 {
+  type Error = anyhow::Error;
+
+  fn try_from(value: ActionOutput) -> Result<Self, Self::Error> {
+    match value {
+      ActionOutput::Integer(value) => Ok(value),
+      _ => Err(anyhow::anyhow!("Could not convert ActionOutput to i64"))
+    }
+  }
+}
+
+impl TryFrom<ActionOutput> for f64 {
+  type Error = anyhow::Error;
+
+  fn try_from(value: ActionOutput) -> Result<Self, Self::Error> {
+    match value {
+      ActionOutput::Float(value) => Ok(value),
+      _ => Err(anyhow::anyhow!("Could not convert ActionOutput to f64"))
+    }
+  }
+}
+
+impl TryFrom<ActionOutput> for bool {
+  type Error = anyhow::Error;
+
+  fn try_from(value: ActionOutput) -> Result<Self, Self::Error> {
+    match value {
+      ActionOutput::Boolean(value) => Ok(value),
+      _ => Err(anyhow::anyhow!("Could not convert ActionOutput to bool"))
+    }
+  }
+}
+
+impl From<String> for ActionOutput {
+  fn from(value: String) -> Self {
+    Self::String(value)
+  }
+}
+
+impl From<i64> for ActionOutput {
+  fn from(value: i64) -> Self {
+    Self::Integer(value)
+  }
+}
+
+impl From<f64> for ActionOutput {
+  fn from(value: f64) -> Self {
+    Self::Float(value)
+  }
+}
+
+impl From<bool> for ActionOutput {
+  fn from(value: bool) -> Self {
+    Self::Boolean(value)
+  }
+}
+
+impl From<&str> for ActionOutput {
+  fn from(value: &str) -> Self {
+    Self::String(value.to_string())
+  }
+}
+
 /// An input for an action.
 /// 
 /// Action inputs are not required to use this
