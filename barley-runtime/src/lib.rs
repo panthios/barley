@@ -106,23 +106,6 @@ impl ActionObject {
     self.action.check(ctx).await
   }
 
-  #[async_recursion]
-  pub(crate) async fn check_deps(&self, ctx: Runtime) -> Result<bool> {
-    if self.check(ctx.clone()).await? {
-      return Ok(true)
-    }
-
-    let deps = self.deps.clone();
-
-    for dep in deps.clone() {
-      if !dep.check_deps(ctx.clone()).await? {
-        return Ok(false)
-      }
-    }
-
-    Ok(true)
-  }
-
   pub(crate) async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>> {
     if self.check(runtime.clone()).await? {
       return Ok(None)

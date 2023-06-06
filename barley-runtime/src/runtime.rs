@@ -1,4 +1,5 @@
 use futures::future::join_all;
+use futures::future::try_join_all;
 use tokio::sync::RwLock;
 use tokio::sync::Barrier;
 use anyhow::Result;
@@ -142,11 +143,11 @@ impl Runtime {
             }));
         }
 
-        let results = join_all(handles).await;
+        let results = try_join_all(handles).await;
+        tick_loop.abort();
+        bars.write().await.iter().for_each(|bar: &ProgressBar| bar.finish());
 
-        for result in results {
-            result??;
-        }
+        results?;
 
         Ok(())
     }
