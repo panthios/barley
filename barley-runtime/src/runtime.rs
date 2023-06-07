@@ -151,6 +151,11 @@ impl Runtime {
 
         Ok(())
     }
+
+    /// Get the output of an action.
+    pub async fn get_output(&self, obj: ActionObject) -> Option<ActionOutput> {
+        self.outputs.read().await.get(&obj.id()).cloned()
+    }
 }
 
 /// A builder for a runtime.

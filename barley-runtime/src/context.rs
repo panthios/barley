@@ -18,7 +18,7 @@ impl Context {
   /// [`Default`]: https://doc.rust-lang.org/std/default/trait.Default.html
   pub fn new() -> Self {
     Self {
-      actions: Vec::new()
+      actions: Vec::new(),
     }
   }
 
