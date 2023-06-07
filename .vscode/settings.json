@@ -1,0 +1,7 @@
+{
+  "rust-analyzer.cargo.features": [
+    "barley-std/fs",
+    "barley-std/time",
+    "barley-std/process"
+  ]
+}

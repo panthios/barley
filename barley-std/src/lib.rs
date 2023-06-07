@@ -4,6 +4,9 @@ pub mod time;
 #[cfg(feature = "fs")]
 pub mod fs;
 
+#[cfg(feature = "process")]
+pub mod process;
+
 use barley_runtime::prelude::*;
 
 #[derive(Default)]

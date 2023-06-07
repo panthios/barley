@@ -3,7 +3,7 @@ name = "barley-std"
 description = "The Barley standard library"
 homepage = "https://github.com/panthios/barley"
 repository = "https://github.com/panthios/barley"
-docs = "https://docs.rs/barley-std"
+documentation = "https://docs.rs/barley-std"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["barley", "standard", "library"]
@@ -18,8 +18,9 @@ futures = "0.3.28"
 tokio = { version = "1.28.2", optional = true }
 
 [features]
-time = ["dep:tokio", "tokio/time"]
-fs = ["dep:tokio", "tokio/fs"]
+time = ["dep:tokio", "tokio?/time"]
+fs = ["dep:tokio", "tokio?/fs"]
+process = ["dep:tokio", "tokio?/process"]
 
 [dev-dependencies]
 tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread"] }
