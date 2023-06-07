@@ -72,3 +72,75 @@ impl Action for WriteFile {
         format!("Write file {}", self.path.display())
     }
 }
+
+pub struct ReadFile {
+    path: PathBuf
+}
+
+impl ReadFile {
+    pub fn new<P>(path: P) -> Self
+    where
+        P: Into<PathBuf>,
+    {
+        Self {
+            path: path.into()
+        }
+    }
+}
+
+#[async_trait]
+impl Action for ReadFile {
+    async fn check(&self, _ctx: Runtime) -> Result<bool> {
+        Ok(false)
+    }
+
+    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>> {
+        let content = tokio::fs::read_to_string(&self.path).await?;
+
+        Ok(Some(ActionOutput::String(content)))
+    }
+
+    async fn rollback(&self, _ctx: Runtime) -> Result<()> {
+        Ok(())
+    }
+
+    fn display_name(&self) -> String {
+        format!("Read file {}", self.path.display())
+    }
+}
+
+pub struct DeleteFile {
+    path: PathBuf
+}
+
+impl DeleteFile {
+    pub fn new<P>(path: P) -> Self
+    where
+        P: Into<PathBuf>,
+    {
+        Self {
+            path: path.into()
+        }
+    }
+}
+
+#[async_trait]
+impl Action for DeleteFile {
+    async fn check(&self, _ctx: Runtime) -> Result<bool> {
+        Ok(false)
+    }
+
+    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>> {
+        tokio::fs::remove_file(&self.path).await?;
+
+        Ok(None)
+    }
+
+    async fn rollback(&self, _ctx: Runtime) -> Result<()> {
+        Ok(())
+    }
+
+    fn display_name(&self) -> String {
+        format!("Delete file {}", self.path.display())
+    }
+}
