@@ -1,5 +1,5 @@
 use barley_runtime::prelude::*;
-use barley_std::thread::Sleep;
+use barley_std::time::Sleep;
 use std::time::Duration;
 
 

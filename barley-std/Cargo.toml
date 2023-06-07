@@ -15,7 +15,11 @@ exclude = ["examples/*", "tests/*", "benches/*"]
 anyhow = "1.0.71"
 barley-runtime = { version = "0.4.0", path = "../barley-runtime" }
 futures = "0.3.28"
-tokio = { version = "1.28.2", features = ["time", "fs"] }
+tokio = { version = "1.28.2", optional = true }
+
+[features]
+time = ["dep:tokio", "tokio/time"]
+fs = ["dep:tokio", "tokio/fs"]
 
 [dev-dependencies]
 tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread"] }
