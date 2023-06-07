@@ -6,4 +6,4 @@ This crate provides the runtime for the barley workflow engine. It is responsibl
 
 ## Usage
 
-See the [barley-interface](https://crates.io/crates/barley-interface) crate for an example of how to use `barley-runtime`.
+See the [barley-std](https://crates.io/crates/barley-std) crate for an example of how to use `barley-runtime`.

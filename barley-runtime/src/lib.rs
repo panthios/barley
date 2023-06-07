@@ -5,16 +5,15 @@
 //! This crate contains the runtime for the `barley` workflow engine. It
 //! provides the [`Action`] trait, which is the main interface for defining
 //! actions that can be executed by the engine. It also provides the
-//! [`Context`] struct, which is used to pass information between actions.
+//! [`Runtime`] struct, which is used to run workflows.
 //! 
 //! [`Action`]: trait.Action.html
-//! [`Context`]: struct.Context.html
+//! [`Runtime`]: struct.Runtime.html
 
 use anyhow::Result;
 use uuid::Uuid;
 use std::sync::Arc;
 use async_trait::async_trait;
-use async_recursion::async_recursion;
 
 /// The prelude for the `barley-runtime` crate.
 /// 

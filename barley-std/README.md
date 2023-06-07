@@ -12,18 +12,14 @@ use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-  let interface = Interface::new();
+  let sleep_1 = Sleep::new(Duration::from_secs(1));
+  let sleep_2 = Sleep::new(Duration::from_secs(2));
 
-  let wait_1s = Sleep::new(Duration::from_secs(1));
-  let wait_2s = Sleep::new(Duration::from_secs(2));
-
-  let wait_1s = interface.add_action(wait_1s).await;
-  let mut wait_2s = interface.add_action(wait_2s).await;
-
-  wait_2s.requires(wait_1s);
-
-  interface.update_action(wait_2s).await;
-
-  interface.run().await
+  RuntimeBuilder::new()
+    .add_action(sleep_1)
+    .add_action(sleep_2)
+    .build()
+    .run()
+    .await
 }
 ```
