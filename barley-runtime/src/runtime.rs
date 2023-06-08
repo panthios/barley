@@ -1,8 +1,6 @@
-use futures::future::join_all;
 use futures::future::try_join_all;
 use tokio::sync::RwLock;
 use tokio::sync::Barrier;
-use anyhow::Result;
 use tokio::task::JoinHandle;
 use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
 
@@ -13,6 +11,7 @@ use std::{
 use crate::{
     ActionObject, Id,
     ActionOutput,
+    ActionError,
     context::Context
 };
 
@@ -41,7 +40,7 @@ pub struct Runtime {
 
 impl Runtime {
     /// Run the workflow.
-    pub async fn run(mut self) -> Result<()> {
+    pub async fn run(mut self) -> Result<(), ActionError> {
         let actions = self.ctx.read().await.actions.clone();
         let mut dependents: HashMap<Id, usize> = HashMap::new();
 
@@ -73,7 +72,7 @@ impl Runtime {
             self.barriers.insert(id, barrier);
         }
 
-        let mut handles: Vec<JoinHandle<Result<()>>> = Vec::new();
+        let mut handles: Vec<JoinHandle<Result<(), ActionError>>> = Vec::new();
         let bars = Arc::new(RwLock::new(Vec::new()));
         let bars_clone = bars.clone();
 
@@ -116,7 +115,11 @@ impl Runtime {
                 let display_name = action.display_name();
 
                 let progress = runtime_clone.progress.write().await.add(ProgressBar::new_spinner());
-                progress.set_style(ProgressStyle::default_spinner().template(" {spinner} [{elapsed_precise}] {wide_msg}")?);
+                progress.set_style(
+                    ProgressStyle::default_spinner().template(" {spinner} [{elapsed_precise}] {wide_msg}")
+                        .map_err(|e| ActionError::InternalError("PROGRESS_TEMPLATE_FAIL"))?
+                );
+
                 progress.set_message(display_name.clone());
                 bars.write().await.push(progress.clone());
 
@@ -147,7 +150,17 @@ impl Runtime {
         tick_loop.abort();
         bars.write().await.iter().for_each(|bar: &ProgressBar| bar.finish());
 
-        results?;
+        if results.is_err() {
+            return Err(ActionError::InternalError("RUNTIME_JOIN_FAULT"))
+        }
+
+        let results = results.unwrap();
+
+        for result in results {
+            if result.is_err() {
+                return Err(result.err().unwrap())
+            }
+        }
 
         Ok(())
     }

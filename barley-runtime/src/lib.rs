@@ -10,9 +10,9 @@
 //! [`Action`]: trait.Action.html
 //! [`Runtime`]: struct.Runtime.html
 
-use anyhow::Result;
 use uuid::Uuid;
 use std::sync::Arc;
+use thiserror::Error;
 use async_trait::async_trait;
 
 /// The prelude for the `barley-runtime` crate.
@@ -46,17 +46,17 @@ pub trait Action: Send + Sync {
   /// proceed to run it. If this method returns `true`,
   /// the action has already run, and the engine will
   /// skip it.
-  async fn check(&self, runtime: Runtime) -> Result<bool>;
+  async fn check(&self, runtime: Runtime) -> Result<bool, ActionError>;
 
   /// Run the action.
-  async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>>;
+  async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>, ActionError>;
 
   /// Undo the action.
   /// 
   /// This is not currently possible, and will not
   /// do anything. This will be usable in a future
   /// version of Barley.
-  async fn rollback(&self, runtime: Runtime) -> Result<()>;
+  async fn rollback(&self, runtime: Runtime) -> Result<(), ActionError>;
 
   /// Get the display name of the action.
   fn display_name(&self) -> String;
@@ -101,11 +101,11 @@ impl ActionObject {
     self.deps.clone()
   }
 
-  pub(crate) async fn check(&self, ctx: Runtime) -> Result<bool> {
+  pub(crate) async fn check(&self, ctx: Runtime) -> Result<bool, ActionError> {
     self.action.check(ctx).await
   }
 
-  pub(crate) async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>> {
+  pub(crate) async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>, ActionError> {
     if self.check(runtime.clone()).await? {
       return Ok(None)
     }
@@ -113,7 +113,7 @@ impl ActionObject {
     self.action.perform(runtime).await
   }
 
-  pub(crate) async fn rollback(&self, ctx: Runtime) -> Result<()> {
+  pub(crate) async fn rollback(&self, ctx: Runtime) -> Result<(), ActionError> {
     self.action.rollback(ctx).await
   }
 
@@ -143,7 +143,7 @@ pub struct ContextCallbacks {
   /// Called when an action is completed successfully.
   pub on_action_finished: Option<fn(ActionObject)>,
   /// Called when an action fails.
-  pub on_action_failed: Option<fn(ActionObject, &anyhow::Error)>
+  pub on_action_failed: Option<fn(ActionObject, &ActionError)>
 }
 
 /// A unique identifier for an action.
@@ -182,45 +182,45 @@ pub enum ActionOutput {
 }
 
 impl TryFrom<ActionOutput> for String {
-  type Error = anyhow::Error;
+  type Error = ActionError;
 
   fn try_from(value: ActionOutput) -> Result<Self, Self::Error> {
     match value {
       ActionOutput::String(value) => Ok(value),
-      _ => Err(anyhow::anyhow!("Could not convert ActionOutput to String"))
+      _ => Err(ActionError::OutputConversionFailed("String".to_string()))
     }
   }
 }
 
 impl TryFrom<ActionOutput> for i64 {
-  type Error = anyhow::Error;
+  type Error = ActionError;
 
   fn try_from(value: ActionOutput) -> Result<Self, Self::Error> {
     match value {
       ActionOutput::Integer(value) => Ok(value),
-      _ => Err(anyhow::anyhow!("Could not convert ActionOutput to i64"))
+      _ => Err(ActionError::OutputConversionFailed("i64".to_string()))
     }
   }
 }
 
 impl TryFrom<ActionOutput> for f64 {
-  type Error = anyhow::Error;
+  type Error = ActionError;
 
   fn try_from(value: ActionOutput) -> Result<Self, Self::Error> {
     match value {
       ActionOutput::Float(value) => Ok(value),
-      _ => Err(anyhow::anyhow!("Could not convert ActionOutput to f64"))
+      _ => Err(ActionError::OutputConversionFailed("f64".to_string()))
     }
   }
 }
 
 impl TryFrom<ActionOutput> for bool {
-  type Error = anyhow::Error;
+  type Error = ActionError;
 
   fn try_from(value: ActionOutput) -> Result<Self, Self::Error> {
     match value {
       ActionOutput::Boolean(value) => Ok(value),
-      _ => Err(anyhow::anyhow!("Could not convert ActionOutput to bool"))
+      _ => Err(ActionError::OutputConversionFailed("bool".to_string()))
     }
   }
 }
@@ -330,4 +330,21 @@ impl<T: Default> Default for ActionInput<T> {
   fn default() -> Self {
     Self::new_static(T::default())
   }
+}
+
+/// Any error that can occur during an action.
+#[derive(Debug, Error)]
+pub enum ActionError {
+  /// An error occured internally in the action.
+  #[error("{0}")]
+  ActionFailed(String),
+  /// Action output conversion failed.
+  #[error("Could not convert ActionOutput to {0}")]
+  OutputConversionFailed(String),
+  /// An internal error occured, and should be reported.
+  #[error("An internal error occured, please report this error code: {0}")]
+  InternalError(&'static str),
+  /// An action which should have returned a value did not.
+  #[error("Dependency did not return a value")]
+  NoActionReturn
 }

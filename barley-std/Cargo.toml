@@ -7,13 +7,12 @@ documentation = "https://docs.rs/barley-std"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["barley", "standard", "library"]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 exclude = ["examples/*", "tests/*", "benches/*"]
 
 [dependencies]
-anyhow = "1.0.71"
-barley-runtime = { version = "0.4.0", path = "../barley-runtime" }
+barley-runtime = { version = "0.5.0", path = "../barley-runtime" }
 futures = "0.3.28"
 tokio = { version = "1.28.2", optional = true }
 

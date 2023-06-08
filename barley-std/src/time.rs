@@ -17,17 +17,17 @@ impl Sleep {
 
 #[async_trait]
 impl Action for Sleep {
-    async fn check(&self, _ctx: Runtime) -> Result<bool> {
+    async fn check(&self, _ctx: Runtime) -> Result<bool, ActionError> {
         Ok(false)
     }
 
-    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>> {
+    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
         sleep(self.duration).await;
 
         Ok(None)
     }
 
-    async fn rollback(&self, _ctx: Runtime) -> Result<()> {
+    async fn rollback(&self, _ctx: Runtime) -> Result<(), ActionError> {
         Ok(())
     }
 

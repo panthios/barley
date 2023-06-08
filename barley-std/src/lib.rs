@@ -20,15 +20,15 @@ impl Join {
 
 #[async_trait]
 impl Action for Join {
-    async fn check(&self, _ctx: Runtime) -> Result<bool> {
+    async fn check(&self, _ctx: Runtime) -> Result<bool, ActionError> {
         Ok(false)
     }
 
-    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>> {
+    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
         Ok(None)
     }
 
-    async fn rollback(&self, _ctx: Runtime) -> Result<()> {
+    async fn rollback(&self, _ctx: Runtime) -> Result<(), ActionError> {
         Ok(())
     }
 

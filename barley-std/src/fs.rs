@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use barley_runtime::prelude::*;
 use tokio::{fs::File, io::AsyncWriteExt};
 use std::path::PathBuf;
@@ -34,19 +33,23 @@ impl WriteFile {
 
 #[async_trait]
 impl Action for WriteFile {
-    async fn check(&self, _ctx: Runtime) -> Result<bool> {
+    async fn check(&self, _ctx: Runtime) -> Result<bool, ActionError> {
         Ok(false)
     }
 
-    async fn perform(&self, ctx: Runtime) -> Result<Option<ActionOutput>> {
-        let mut file = File::create(&self.path).await?;
+    async fn perform(&self, ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
+        let mut file = File::create(&self.path).await
+            .map_err(|e| ActionError::ActionFailed(
+                format!("Failed to create file: {}", e)
+            ))?;
+
         let content = match self.content {
             ActionInput::Static(ref s) => s.clone(),
             ActionInput::Dynamic(ref a) => {
                 let output = ctx.get_output(a.clone()).await;
 
                 if output.is_none() {
-                    return Err(anyhow!("Action has no output"));
+                    return Err(ActionError::NoActionReturn)
                 }
 
                 let output = output.unwrap();
@@ -55,14 +58,20 @@ impl Action for WriteFile {
             }
         };
 
-        file.write_all(content.as_bytes()).await?;
+        file.write_all(content.as_bytes()).await
+            .map_err(|e| ActionError::ActionFailed(
+                format!("Failed to write to file: {}", e)
+            ))?;
 
         Ok(None)
     }
 
-    async fn rollback(&self, _ctx: Runtime) -> Result<()> {
+    async fn rollback(&self, _ctx: Runtime) -> Result<(), ActionError> {
         if self.path.exists() {
-            tokio::fs::remove_file(&self.path).await?;
+            tokio::fs::remove_file(&self.path).await
+                .map_err(|e| ActionError::ActionFailed(
+                    format!("Failed to delete file: {}", e)
+                ))?;
         }
 
         Ok(())
@@ -90,17 +99,20 @@ impl ReadFile {
 
 #[async_trait]
 impl Action for ReadFile {
-    async fn check(&self, _ctx: Runtime) -> Result<bool> {
+    async fn check(&self, _ctx: Runtime) -> Result<bool, ActionError> {
         Ok(false)
     }
 
-    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>> {
-        let content = tokio::fs::read_to_string(&self.path).await?;
+    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
+        let content = tokio::fs::read_to_string(&self.path).await
+            .map_err(|e| ActionError::ActionFailed(
+                format!("Failed to read file: {}", e)
+            ))?;
 
         Ok(Some(ActionOutput::String(content)))
     }
 
-    async fn rollback(&self, _ctx: Runtime) -> Result<()> {
+    async fn rollback(&self, _ctx: Runtime) -> Result<(), ActionError> {
         Ok(())
     }
 
@@ -126,17 +138,20 @@ impl DeleteFile {
 
 #[async_trait]
 impl Action for DeleteFile {
-    async fn check(&self, _ctx: Runtime) -> Result<bool> {
+    async fn check(&self, _ctx: Runtime) -> Result<bool, ActionError> {
         Ok(false)
     }
 
-    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>> {
-        tokio::fs::remove_file(&self.path).await?;
+    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
+        tokio::fs::remove_file(&self.path).await
+            .map_err(|e| ActionError::ActionFailed(
+                format!("Failed to delete file: {}", e)
+            ))?;
 
         Ok(None)
     }
 
-    async fn rollback(&self, _ctx: Runtime) -> Result<()> {
+    async fn rollback(&self, _ctx: Runtime) -> Result<(), ActionError> {
         Ok(())
     }
 

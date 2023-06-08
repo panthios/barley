@@ -1,7 +1,5 @@
 use barley_runtime::prelude::*;
 use tokio::process::Command as TokioCommand;
-use anyhow::anyhow;
-
 
 pub struct Command {
     command: String,
@@ -19,30 +17,36 @@ impl Command {
 
 #[async_trait]
 impl Action for Command {
-    async fn check(&self, _ctx: Runtime) -> Result<bool> {
+    async fn check(&self, _ctx: Runtime) -> Result<bool, ActionError> {
         Ok(false)
     }
 
-    async fn perform(&self, ctx: Runtime) -> Result<Option<ActionOutput>> {
+    async fn perform(&self, ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
         let mut command = TokioCommand::new(&self.command);
         for arg in &self.args {
             command.arg(match arg {
                 ActionInput::Static(value) => value.clone(),
                 ActionInput::Dynamic(output) => ctx.get_output(output.clone()).await
-                    .ok_or_else(|| anyhow!("Output not found"))?
+                    .ok_or(ActionError::NoActionReturn)?
                     .try_into()?
             });
         }
 
-        let status = command.output().await?;
+        let status = command.output().await
+            .map_err(|e| ActionError::ActionFailed(
+                format!("Failed to execute command: {}", e)
+            ))?;
+
         if status.status.success() {
             Ok(None)
         } else {
-            Err(anyhow!("Command failed with status: {}", status.status))
+            Err(ActionError::ActionFailed(
+                format!("Command failed with status: {}", status.status)
+            ))
         }
     }
 
-    async fn rollback(&self, _ctx: Runtime) -> Result<()> {
+    async fn rollback(&self, _ctx: Runtime) -> Result<(), ActionError> {
         Ok(())
     }
 
