@@ -40,7 +40,8 @@ impl Action for WriteFile {
     async fn perform(&self, ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
         let mut file = File::create(&self.path).await
             .map_err(|e| ActionError::ActionFailed(
-                format!("Failed to create file: {}", e)
+                format!("Failed to create file: {}", e),
+                format!("Failed to create file: {}", self.path.display())
             ))?;
 
         let content = match self.content {
@@ -60,7 +61,8 @@ impl Action for WriteFile {
 
         file.write_all(content.as_bytes()).await
             .map_err(|e| ActionError::ActionFailed(
-                format!("Failed to write to file: {}", e)
+                format!("Failed to write to file: {}", e),
+                format!("Failed to write to file: {}", self.path.display())
             ))?;
 
         Ok(None)
@@ -70,7 +72,8 @@ impl Action for WriteFile {
         if self.path.exists() {
             tokio::fs::remove_file(&self.path).await
                 .map_err(|e| ActionError::ActionFailed(
-                    format!("Failed to delete file: {}", e)
+                    format!("Failed to delete file: {}", e),
+                    format!("Failed to delete file: {}", self.path.display())
                 ))?;
         }
 
@@ -106,7 +109,8 @@ impl Action for ReadFile {
     async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
         let content = tokio::fs::read_to_string(&self.path).await
             .map_err(|e| ActionError::ActionFailed(
-                format!("Failed to read file: {}", e)
+                format!("Failed to read file: {}", e),
+                format!("Failed to read file: {}", self.path.display())
             ))?;
 
         Ok(Some(ActionOutput::String(content)))
@@ -145,7 +149,8 @@ impl Action for DeleteFile {
     async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
         tokio::fs::remove_file(&self.path).await
             .map_err(|e| ActionError::ActionFailed(
-                format!("Failed to delete file: {}", e)
+                format!("Failed to delete file: {}", e),
+                format!("Failed to delete file: {}", self.path.display())
             ))?;
 
         Ok(None)

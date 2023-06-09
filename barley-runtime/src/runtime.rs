@@ -1,8 +1,7 @@
-use futures::future::try_join_all;
 use tokio::sync::RwLock;
 use tokio::sync::Barrier;
-use tokio::task::JoinHandle;
 use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
+use tokio::task::JoinSet;
 
 use std::{
     sync::Arc,
@@ -72,7 +71,7 @@ impl Runtime {
             self.barriers.insert(id, barrier);
         }
 
-        let mut handles: Vec<JoinHandle<Result<(), ActionError>>> = Vec::new();
+        let mut join_set: JoinSet<Result<(), ActionError>> = JoinSet::new();
         let bars = Arc::new(RwLock::new(Vec::new()));
         let bars_clone = bars.clone();
 
@@ -101,7 +100,7 @@ impl Runtime {
 
             let self_barriers = self.barriers.clone();
 
-            handles.push(tokio::spawn(async move {
+            join_set.spawn(async move {
                 let self_barrier = self_barriers.get(&action.id).cloned();
 
                 for barrier in barriers {
@@ -117,7 +116,7 @@ impl Runtime {
                 let progress = runtime_clone.progress.write().await.add(ProgressBar::new_spinner());
                 progress.set_style(
                     ProgressStyle::default_spinner().template(" {spinner} [{elapsed_precise}] {wide_msg}")
-                        .map_err(|e| ActionError::InternalError("PROGRESS_TEMPLATE_FAIL"))?
+                        .map_err(|_| ActionError::InternalError("PROGRESS_TEMPLATE_FAIL"))?
                 );
 
                 progress.set_message(display_name.clone());
@@ -125,9 +124,15 @@ impl Runtime {
 
                 let output = action.perform(runtime_clone.clone()).await;
 
-                if output.is_err() {
-                    progress.finish_with_message(format!("Error: {}", display_name));
-                    return Err(output.err().unwrap())
+                if let Err(errmsg) = output {
+                    progress.finish_with_message(format!("ERROR: {}", match errmsg.clone() {
+                        ActionError::ActionFailed(msg, _) => msg,
+                        ActionError::InternalError(msg) => msg.to_string(),
+                        ActionError::NoActionReturn => "No action return".into(),
+                        ActionError::OutputConversionFailed(msg) => msg,
+                    }));
+
+                    return Err(errmsg)
                 }
 
                 progress.finish_and_clear();
@@ -143,22 +148,28 @@ impl Runtime {
                 }
 
                 Ok(())
-            }));
+            });
         }
 
-        let results = try_join_all(handles).await;
-        tick_loop.abort();
-        bars.write().await.iter().for_each(|bar: &ProgressBar| bar.finish());
+        while let Some(result) = join_set.join_next().await {
+            match result {
+                Ok(Ok(())) => {},
+                Ok(Err(err)) => {
+                    tick_loop.abort();
+                    join_set.abort_all();
 
-        if results.is_err() {
-            return Err(ActionError::InternalError("RUNTIME_JOIN_FAULT"))
-        }
+                    if let ActionError::ActionFailed(_, long) = err.clone() {
+                        println!("{}", long);
+                    }
 
-        let results = results.unwrap();
+                    return Err(err)
+                },
+                Err(_) => {
+                    tick_loop.abort();
+                    join_set.abort_all();
 
-        for result in results {
-            if result.is_err() {
-                return Err(result.err().unwrap())
+                    return Err(ActionError::InternalError("JOIN_SET_ERROR"))
+                }
             }
         }
 

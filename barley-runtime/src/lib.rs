@@ -333,11 +333,11 @@ impl<T: Default> Default for ActionInput<T> {
 }
 
 /// Any error that can occur during an action.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone)]
 pub enum ActionError {
   /// An error occured internally in the action.
   #[error("{0}")]
-  ActionFailed(String),
+  ActionFailed(String, String),
   /// Action output conversion failed.
   #[error("Could not convert ActionOutput to {0}")]
   OutputConversionFailed(String),

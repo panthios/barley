@@ -34,14 +34,16 @@ impl Action for Command {
 
         let status = command.output().await
             .map_err(|e| ActionError::ActionFailed(
-                format!("Failed to execute command: {}", e)
+                format!("Internal spawn error: {}", e),
+                format!("Failed to spawn command: {}. This is a bug in the Barley engine.", self.command)
             ))?;
 
         if status.status.success() {
             Ok(None)
         } else {
             Err(ActionError::ActionFailed(
-                format!("Command failed with status: {}", status.status)
+                format!("Command failed with status: {}", status.status),
+                format!("-- STDOUT --\n\n{}\n\n-- STDOUT --\n\n-- STDERR --\n\n{}\n\n-- STDERR --", String::from_utf8_lossy(&status.stdout), String::from_utf8_lossy(&status.stderr))
             ))
         }
     }
