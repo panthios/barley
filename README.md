@@ -19,7 +19,7 @@ use barley_std::thread::Sleep;
 use std::time::Duration;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ActionError> {
   let wait_1s: ActionObject = Sleep::new(Duration::from_secs(1)).into();
   let mut wait_2s: ActionObject = Sleep::new(Duration::from_secs(2)).into();
 
@@ -46,16 +46,16 @@ pub struct Print {
 
 #[async_trait]
 impl Action for Print {
-  async fn check(&self, ctx: Runtime) -> Result<bool> {
+  async fn check(&self, ctx: Runtime) -> Result<bool, ActionError> {
     Ok(false)
   }
 
-  async fn perform(&self, ctx: Runtime) -> Result<Option<ActionOutput>> {
+  async fn perform(&self, ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
     println!("{}", self.message);
     Ok(None)
   }
 
-  async fn rollback(&self, ctx: Runtime) -> Result<()> {
+  async fn rollback(&self, ctx: Runtime) -> Result<(), ActionError> {
     Ok(())
   }
 }

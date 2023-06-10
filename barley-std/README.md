@@ -11,7 +11,7 @@ use std::time::Duration;
 
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ActionError> {
   let sleep_1 = Sleep::new(Duration::from_secs(1));
   let sleep_2 = Sleep::new(Duration::from_secs(2));
 
