@@ -39,7 +39,7 @@ pub struct Runtime {
 
 impl Runtime {
     /// Run the workflow.
-    pub async fn run(mut self) -> Result<(), ActionError> {
+    pub async fn perform(mut self) -> Result<(), ActionError> {
         let actions = self.ctx.read().await.actions.clone();
         let mut dependents: HashMap<Id, usize> = HashMap::new();
 
@@ -166,6 +166,82 @@ impl Runtime {
                 },
                 Err(_) => {
                     tick_loop.abort();
+                    join_set.abort_all();
+
+                    return Err(ActionError::InternalError("JOIN_SET_ERROR"))
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Rollback the workflow.
+    /// 
+    /// This will undo all of the actions that have
+    /// been performed, if possible.
+    pub async fn rollback(self) -> Result<(), ActionError> {
+        let actions = self.ctx.read().await.actions.clone();
+        let mut dependencies: HashMap<Id, Vec<Id>> = HashMap::new();
+
+        // Get the dependencies for each action. For
+        // example, if action A depends on action B,
+        // then B is a dependency of A.
+        for action in actions.iter() {
+            dependencies.insert(action.id, Vec::new());
+
+            action.deps()
+                .iter()
+                .map(|dep| dep.id())
+                .for_each(|id| {
+                    let deps = dependencies.entry(id).or_insert(Vec::new());
+                    deps.push(action.id);
+                });
+        }
+
+        // Sort the actions by their dependencies.
+        let mut actions = actions;
+        actions.sort_by(|a, b| {
+            let a_deps = dependencies.get(&a.id).unwrap();
+            let b_deps = dependencies.get(&b.id).unwrap();
+
+            if a_deps.contains(&b.id) {
+                return std::cmp::Ordering::Greater
+            }
+
+            if b_deps.contains(&a.id) {
+                return std::cmp::Ordering::Less
+            }
+
+            std::cmp::Ordering::Equal
+        });
+
+        // Create spawns
+        let mut join_set: JoinSet<Result<(), ActionError>> = JoinSet::new();
+
+        for action in actions {
+            let runtime_clone = self.clone();
+
+            join_set.spawn(async move {
+                action.rollback(runtime_clone.clone()).await?;
+
+                Ok(())
+            });
+        }
+
+        while let Some(result) = join_set.join_next().await {
+            match result {
+                Ok(Ok(())) => {},
+                Ok(Err(err)) => {
+                    join_set.abort_all();
+
+                    if let ActionError::ActionFailed(_, long) = err.clone() {
+                        println!("{}", long);
+                    }
+
+                    return Err(err)
+                },
+                Err(_) => {
                     join_set.abort_all();
 
                     return Err(ActionError::InternalError("JOIN_SET_ERROR"))

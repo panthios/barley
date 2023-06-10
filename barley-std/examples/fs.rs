@@ -16,6 +16,6 @@ async fn main() -> Result<(), ActionError> {
         .add_action(read)
         .add_action(delete)
         .build()
-        .run()
+        .perform()
         .await
 }

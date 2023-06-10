@@ -20,6 +20,6 @@ async fn main() -> Result<(), ActionError> {
         .add_action(apt_update)
         .add_action(apt_install)
         .build()
-        .run()
+        .perform()
         .await
 }

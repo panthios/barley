@@ -15,7 +15,7 @@ async fn main() {
         .add_action(secs_1)
         .add_action(secs_2)
         .build()
-        .run()
+        .perform()
         .await
         .unwrap();
 }
