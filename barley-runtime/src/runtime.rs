@@ -132,6 +132,7 @@ impl Runtime {
                         ActionError::InternalError(msg) => msg.to_string(),
                         ActionError::NoActionReturn => "No action return".into(),
                         ActionError::OutputConversionFailed(msg) => msg,
+                        ActionError::OperationNotSupported => "Operation not supported".into()
                     }));
 
                     return Err(errmsg)

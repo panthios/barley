@@ -5,5 +5,6 @@ pub use crate::{
   Action, Runtime, ActionError,
   ContextCallbacks, ActionOutput,
   ActionInput, ActionObject,
-  RuntimeBuilder
+  RuntimeBuilder, Probe,
+  Operation
 };

@@ -17,21 +17,24 @@ impl Sleep {
 
 #[async_trait]
 impl Action for Sleep {
-    async fn check(&self, _ctx: Runtime) -> Result<bool, ActionError> {
-        Ok(false)
+    async fn probe(&self, _runtime: Runtime) -> Result<Probe, ActionError> {
+        Ok(Probe {
+            needs_run: true,
+            can_rollback: false
+        })
     }
 
-    async fn perform(&self, _ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
+    async fn run(&self, _runtime: Runtime, op: Operation) -> Result<Option<ActionOutput>, ActionError> {
+        if matches!(op, Operation::Rollback) {
+            return Err(ActionError::OperationNotSupported)
+        }
+
         sleep(self.duration).await;
 
         Ok(None)
     }
 
-    async fn rollback(&self, _ctx: Runtime) -> Result<(), ActionError> {
-        Ok(())
-    }
-
     fn display_name(&self) -> String {
-        format!("Sleep for {:?}", self.duration)
+        format!("Sleep for {} seconds", self.duration.as_secs())
     }
 }

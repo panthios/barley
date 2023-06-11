@@ -4,11 +4,13 @@ use barley_std::process::Command;
 
 #[tokio::main]
 async fn main() -> Result<(), ActionError> {
-    let apt_update: ActionObject = Command::new("apt-get".to_string(), vec![
+    let apt_update: ActionObject = Command::new(vec![
+        "apt-get".to_string().into(),
         "update".to_string().into()
     ]).into();
 
-    let mut apt_install: ActionObject = Command::new("apt-get".to_string(), vec![
+    let mut apt_install: ActionObject = Command::new(vec![
+        "apt-get".to_string().into(),
         "install".to_string().into(),
         "-y".to_string().into(),
         "curl".to_string().into()

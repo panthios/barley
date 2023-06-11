@@ -11,7 +11,7 @@
 //! [`Runtime`]: struct.Runtime.html
 
 use uuid::Uuid;
-use std::sync::Arc;
+use std::{sync::Arc, str::FromStr};
 use thiserror::Error;
 use async_trait::async_trait;
 
@@ -47,11 +47,17 @@ pub trait Action: Send + Sync {
   /// the action has already run, and the engine will
   /// skip it.
   #[deprecated(since = "0.5.1", note = "`check` is being renamed to `probe`")]
-  async fn check(&self, runtime: Runtime) -> Result<bool, ActionError>;
+  async fn check(&self, runtime: Runtime) -> Result<bool, ActionError> {
+    let probe = self.probe(runtime).await?;
+
+    Ok(probe.needs_run)
+  }
 
   /// Run the action.
   #[deprecated(since = "0.5.1", note = "`perform` and `rollback` are being merged into `run`")]
-  async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>, ActionError>;
+  async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>, ActionError> {
+    self.run(runtime, Operation::Perform).await
+  }
 
   /// Undo the action.
   /// 
@@ -59,7 +65,11 @@ pub trait Action: Send + Sync {
   /// do anything. This will be usable in a future
   /// version of Barley.
   #[deprecated(since = "0.5.1", note = "`perform` and `rollback` are being merged into `run`")]
-  async fn rollback(&self, runtime: Runtime) -> Result<(), ActionError>;
+  async fn rollback(&self, runtime: Runtime) -> Result<(), ActionError> {
+    self.run(runtime, Operation::Rollback).await?;
+
+    Ok(())
+  }
 
   /// Run the action.
   /// 
@@ -352,6 +362,7 @@ impl<T: Default> Default for ActionInput<T> {
 
 /// Any error that can occur during an action.
 #[derive(Debug, Error, Clone)]
+#[non_exhaustive]
 pub enum ActionError {
   /// An error occured internally in the action.
   #[error("{0}")]
@@ -364,7 +375,10 @@ pub enum ActionError {
   InternalError(&'static str),
   /// An action which should have returned a value did not.
   #[error("Dependency did not return a value")]
-  NoActionReturn
+  NoActionReturn,
+  /// The operation is not supported by the action.
+  #[error("Operation not supported")]
+  OperationNotSupported
 }
 
 /// The operation to perform.
