@@ -46,9 +46,11 @@ pub trait Action: Send + Sync {
   /// proceed to run it. If this method returns `true`,
   /// the action has already run, and the engine will
   /// skip it.
+  #[deprecated(since = "0.5.1", note = "`check` is being renamed to `probe`")]
   async fn check(&self, runtime: Runtime) -> Result<bool, ActionError>;
 
   /// Run the action.
+  #[deprecated(since = "0.5.1", note = "`perform` and `rollback` are being merged into `run`")]
   async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>, ActionError>;
 
   /// Undo the action.
@@ -56,7 +58,31 @@ pub trait Action: Send + Sync {
   /// This is not currently possible, and will not
   /// do anything. This will be usable in a future
   /// version of Barley.
+  #[deprecated(since = "0.5.1", note = "`perform` and `rollback` are being merged into `run`")]
   async fn rollback(&self, runtime: Runtime) -> Result<(), ActionError>;
+
+  /// Run the action.
+  /// 
+  /// This method takes a [`Runtime`] object, which
+  /// contains the context for the action. It also
+  /// takes an [`Operation`], which is used to
+  /// determine what the action should do.
+  async fn run(&self, runtime: Runtime, operation: Operation) -> Result<Option<ActionOutput>, ActionError> {
+    match operation {
+      Operation::Perform => self.perform(runtime).await,
+      Operation::Rollback => self.rollback(runtime).await.map(|_| None)
+    }
+  }
+
+  /// Probe the action for specific information.
+  async fn probe(&self, runtime: Runtime) -> Result<Probe, ActionError> {
+    let needs_run = self.check(runtime.clone()).await?;
+
+    Ok(Probe {
+      needs_run,
+      can_rollback: false
+    })
+  }
 
   /// Get the display name of the action.
   fn display_name(&self) -> String;
@@ -101,20 +127,12 @@ impl ActionObject {
     self.deps.clone()
   }
 
-  pub(crate) async fn check(&self, ctx: Runtime) -> Result<bool, ActionError> {
-    self.action.check(ctx).await
+  pub(crate) async fn probe(&self, ctx: Runtime) -> Result<Probe, ActionError> {
+    self.action.probe(ctx).await
   }
 
-  pub(crate) async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>, ActionError> {
-    if self.check(runtime.clone()).await? {
-      return Ok(None)
-    }
-
-    self.action.perform(runtime).await
-  }
-
-  pub(crate) async fn rollback(&self, ctx: Runtime) -> Result<(), ActionError> {
-    self.action.rollback(ctx).await
+  pub(crate) async fn run(&self, ctx: Runtime, operation: Operation) -> Result<Option<ActionOutput>, ActionError> {
+    self.action.run(ctx, operation).await
   }
 
   /// Add a dependency to the action.
@@ -347,4 +365,43 @@ pub enum ActionError {
   /// An action which should have returned a value did not.
   #[error("Dependency did not return a value")]
   NoActionReturn
+}
+
+/// The operation to perform.
+/// 
+/// This enum is used to determine what an action
+/// should do. It is used by the [`run`] method.
+/// 
+/// [`run`]: trait.Action.html#method.run
+pub enum Operation {
+  /// Perform the action.
+  Perform,
+  /// Rollback the action.
+  Rollback
+}
+
+/// A probe for an action.
+/// 
+/// This struct is returned by the [`probe`] method
+/// of an [`Action`]. It contains information about
+/// the action, such as whether it needs to be run
+/// or not.
+/// 
+/// [`probe`]: trait.Action.html#method.probe
+/// [`Action`]: trait.Action.html
+#[derive(Debug, Clone)]
+pub struct Probe {
+  /// Whether the action needs to be run.
+  pub needs_run: bool,
+  /// Whether `rollback` is available.
+  pub can_rollback: bool
+}
+
+impl Default for Probe {
+  fn default() -> Self {
+    Self {
+      needs_run: true,
+      can_rollback: false
+    }
+  }
 }

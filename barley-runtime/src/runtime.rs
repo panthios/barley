@@ -7,6 +7,7 @@ use std::{
     sync::Arc,
     collections::HashMap
 };
+use crate::Operation;
 use crate::{
     ActionObject, Id,
     ActionOutput,
@@ -107,7 +108,8 @@ impl Runtime {
                     barrier.wait().await;
                 }
 
-                if action.check(runtime_clone.clone()).await? {
+                let probe = action.probe(runtime_clone.clone()).await?;
+                if !probe.needs_run {
                     return Ok(())
                 }
 
@@ -122,7 +124,7 @@ impl Runtime {
                 progress.set_message(display_name.clone());
                 bars.write().await.push(progress.clone());
 
-                let output = action.perform(runtime_clone.clone()).await;
+                let output = action.run(runtime_clone.clone(), Operation::Perform).await;
 
                 if let Err(errmsg) = output {
                     progress.finish_with_message(format!("ERROR: {}", match errmsg.clone() {
@@ -184,6 +186,15 @@ impl Runtime {
         let actions = self.ctx.read().await.actions.clone();
         let mut dependencies: HashMap<Id, Vec<Id>> = HashMap::new();
 
+        // Check if all of the actions have a rollback
+        // function. If not, then the rollback cannot
+        // be performed.
+        for action in actions.iter() {
+            if !action.probe(self.clone()).await?.can_rollback {
+                return Err(ActionError::InternalError("NO_ROLLBACK"))
+            }
+        }
+
         // Get the dependencies for each action. For
         // example, if action A depends on action B,
         // then B is a dependency of A.
@@ -223,7 +234,7 @@ impl Runtime {
             let runtime_clone = self.clone();
 
             join_set.spawn(async move {
-                action.rollback(runtime_clone.clone()).await?;
+                action.run(runtime_clone.clone(), Operation::Rollback).await?;
 
                 Ok(())
             });
