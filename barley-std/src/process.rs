@@ -79,7 +79,7 @@ impl Action for Command {
 
         let argv = resolve_argv(match op {
             Operation::Perform => &self.command,
-            Operation::Rollback => &self.undo.as_ref().unwrap()
+            Operation::Rollback => self.undo.as_ref().unwrap()
         }, runtime).await?;
 
         let name = argv.first().unwrap().clone();
@@ -108,7 +108,7 @@ impl Action for Command {
     fn display_name(&self) -> String {
         format!("Command: {}", match self.command.first() {
             Some(ActionInput::Static(value)) => value,
-            Some(ActionInput::Dynamic(output)) => "<dynamic>",
+            Some(ActionInput::Dynamic(_)) => "<dynamic>",
             None => "<empty>"
         })
     }

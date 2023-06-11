@@ -11,7 +11,7 @@
 //! [`Runtime`]: struct.Runtime.html
 
 use uuid::Uuid;
-use std::{sync::Arc, str::FromStr};
+use std::sync::Arc;
 use thiserror::Error;
 use async_trait::async_trait;
 

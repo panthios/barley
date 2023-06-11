@@ -23,7 +23,3 @@ process = ["dep:tokio", "tokio?/process"]
 
 [dev-dependencies]
 tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread"] }
-
-[[example]]
-name = "basic"
-path = "examples/basic.rs"

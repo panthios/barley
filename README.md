@@ -46,17 +46,20 @@ pub struct Print {
 
 #[async_trait]
 impl Action for Print {
-  async fn check(&self, ctx: Runtime) -> Result<bool, ActionError> {
-    Ok(false)
+  async fn probe(&self, _runtime: Runtime) -> Result<Probe, ActionError> {
+    Ok(Probe {
+      needs_run: true,
+      can_rollback: false
+    })
   }
 
-  async fn perform(&self, ctx: Runtime) -> Result<Option<ActionOutput>, ActionError> {
+  async fn run(&self, _runtime: Runtime, op: Operation) -> Result<Option<ActionOutput>, ActionError> {
     println!("{}", self.message);
     Ok(None)
   }
 
-  async fn rollback(&self, ctx: Runtime) -> Result<(), ActionError> {
-    Ok(())
+  fn display_name(&self) -> String {
+    "".to_string()
   }
 }
 ```
