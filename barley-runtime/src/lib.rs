@@ -37,62 +37,16 @@ pub use runtime::{Runtime, RuntimeBuilder};
 /// all dependencies are run before the `Action` itself.
 #[async_trait]
 pub trait Action: Send + Sync {
-  /// Check if the action needs to be run.
-  /// 
-  /// This method is called before the action is run,
-  /// and can be used to check if the action needs to
-  /// run at all. If this method returns `false`, the
-  /// action has not run yet, and the engine will
-  /// proceed to run it. If this method returns `true`,
-  /// the action has already run, and the engine will
-  /// skip it.
-  #[deprecated(since = "0.5.1", note = "`check` is being renamed to `probe`")]
-  async fn check(&self, runtime: Runtime) -> Result<bool, ActionError> {
-    let probe = self.probe(runtime).await?;
-
-    Ok(probe.needs_run)
-  }
-
-  /// Run the action.
-  #[deprecated(since = "0.5.1", note = "`perform` and `rollback` are being merged into `run`")]
-  async fn perform(&self, runtime: Runtime) -> Result<Option<ActionOutput>, ActionError> {
-    self.run(runtime, Operation::Perform).await
-  }
-
-  /// Undo the action.
-  /// 
-  /// This is not currently possible, and will not
-  /// do anything. This will be usable in a future
-  /// version of Barley.
-  #[deprecated(since = "0.5.1", note = "`perform` and `rollback` are being merged into `run`")]
-  async fn rollback(&self, runtime: Runtime) -> Result<(), ActionError> {
-    self.run(runtime, Operation::Rollback).await?;
-
-    Ok(())
-  }
-
   /// Run the action.
   /// 
   /// This method takes a [`Runtime`] object, which
   /// contains the context for the action. It also
   /// takes an [`Operation`], which is used to
   /// determine what the action should do.
-  async fn run(&self, runtime: Runtime, operation: Operation) -> Result<Option<ActionOutput>, ActionError> {
-    match operation {
-      Operation::Perform => self.perform(runtime).await,
-      Operation::Rollback => self.rollback(runtime).await.map(|_| None)
-    }
-  }
+  async fn run(&self, runtime: Runtime, operation: Operation) -> Result<Option<ActionOutput>, ActionError>;
 
   /// Probe the action for specific information.
-  async fn probe(&self, runtime: Runtime) -> Result<Probe, ActionError> {
-    let needs_run = self.check(runtime.clone()).await?;
-
-    Ok(Probe {
-      needs_run,
-      can_rollback: false
-    })
-  }
+  async fn probe(&self, runtime: Runtime) -> Result<Probe, ActionError>;
 
   /// Load required state.
   async fn load_state(&self, _builder: &mut RuntimeBuilder) {}
