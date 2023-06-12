@@ -94,6 +94,9 @@ pub trait Action: Send + Sync {
     })
   }
 
+  /// Load required state.
+  async fn load_state(&mut self, _builder: RuntimeBuilder) {}
+
   /// Get the display name of the action.
   fn display_name(&self) -> String;
 }

@@ -4,7 +4,7 @@ use super::ActionObject;
 /// A context for running actions.
 /// 
 /// There should only be one of these per workflow
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Context {
   pub(crate) actions: Vec<ActionObject>
 }

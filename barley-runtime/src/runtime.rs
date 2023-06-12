@@ -3,6 +3,7 @@ use tokio::sync::Barrier;
 use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
 use tokio::task::JoinSet;
 
+use std::any::{Any, TypeId};
 use std::{
     sync::Arc,
     collections::HashMap
@@ -32,16 +33,17 @@ use crate::{
 /// ```
 #[derive(Clone)]
 pub struct Runtime {
-    ctx: Arc<RwLock<Context>>,
+    ctx: Context,
     barriers: HashMap<Id, Arc<Barrier>>,
     outputs: Arc<RwLock<HashMap<Id, ActionOutput>>>,
-    progress: Arc<RwLock<MultiProgress>>
+    progress: Arc<RwLock<MultiProgress>>,
+    state: HashMap<TypeId, Arc<dyn Any + Send + Sync>>
 }
 
 impl Runtime {
     /// Run the workflow.
     pub async fn perform(mut self) -> Result<(), ActionError> {
-        let actions = self.ctx.read().await.actions.clone();
+        let actions = self.ctx.actions.clone();
         let mut dependents: HashMap<Id, usize> = HashMap::new();
 
         // Get the dependents for each action. For
@@ -184,7 +186,7 @@ impl Runtime {
     /// This will undo all of the actions that have
     /// been performed, if possible.
     pub async fn rollback(self) -> Result<(), ActionError> {
-        let actions = self.ctx.read().await.actions.clone();
+        let actions = self.ctx.actions.clone();
         let mut dependencies: HashMap<Id, Vec<Id>> = HashMap::new();
 
         // Check if all of the actions have a rollback
@@ -268,18 +270,27 @@ impl Runtime {
     pub async fn get_output(&self, obj: ActionObject) -> Option<ActionOutput> {
         self.outputs.read().await.get(&obj.id()).cloned()
     }
+
+    /// Get the state object of a type.
+    pub fn get_state<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
+        self.state.get(&TypeId::of::<T>()).cloned().map(|state| {
+            state.downcast::<T>().unwrap()
+        })
+    }
 }
 
 /// A builder for a runtime.
 pub struct RuntimeBuilder {
-    ctx: Context
+    ctx: Context,
+    state: HashMap<TypeId, Arc<dyn Any + Send + Sync>>
 }
 
 impl RuntimeBuilder {
     /// Create a new runtime builder.
     pub fn new() -> Self {
         Self {
-            ctx: Context::new()
+            ctx: Context::new(),
+            state: HashMap::new()
         }
     }
 
@@ -292,11 +303,18 @@ impl RuntimeBuilder {
     /// Build the runtime.
     pub fn build(self) -> Runtime {
         Runtime {
-            ctx: Arc::new(RwLock::new(self.ctx)),
+            ctx: self.ctx,
             barriers: HashMap::new(),
             outputs: Arc::new(RwLock::new(HashMap::new())),
-            progress: Arc::new(RwLock::new(MultiProgress::new()))
+            progress: Arc::new(RwLock::new(MultiProgress::new())),
+            state: HashMap::new()
         }
+    }
+
+    /// Add a state object to the runtime.
+    pub fn add_state<T: Send + Sync + 'static>(mut self, state: T) -> Self {
+        self.state.insert(TypeId::of::<T>(), Arc::new(state));
+        self
     }
 }
 
