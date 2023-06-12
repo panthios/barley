@@ -12,9 +12,9 @@ async fn main() -> Result<(), ActionError> {
     delete.requires(read.clone());
 
     RuntimeBuilder::new()
-        .add_action(write)
-        .add_action(read)
-        .add_action(delete)
+        .add_action(write).await
+        .add_action(read).await
+        .add_action(delete).await
         .build()
         .perform()
         .await

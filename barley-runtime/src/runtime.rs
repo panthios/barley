@@ -296,7 +296,8 @@ impl RuntimeBuilder {
     }
 
     /// Add an action to the runtime.
-    pub fn add_action(mut self, action: ActionObject) -> Self {
+    pub async fn add_action(mut self, action: ActionObject) -> Self {
+        action.load_state(&mut self).await;
         self.ctx.add_action(action);
         self
     }
@@ -313,7 +314,7 @@ impl RuntimeBuilder {
     }
 
     /// Add a state object to the runtime.
-    pub fn add_state<T: Send + Sync + 'static>(mut self, state: T) -> Self {
+    pub fn add_state<T: Send + Sync + 'static>(&mut self, state: T) -> &mut Self {
         self.state.insert(TypeId::of::<T>(), Arc::new(state));
         self
     }

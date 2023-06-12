@@ -19,8 +19,8 @@ async fn main() -> Result<(), ActionError> {
     apt_install.requires(apt_update.clone());
 
     RuntimeBuilder::new()
-        .add_action(apt_update)
-        .add_action(apt_install)
+        .add_action(apt_update).await
+        .add_action(apt_install).await
         .build()
         .perform()
         .await

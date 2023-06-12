@@ -12,8 +12,8 @@ async fn main() {
     secs_2.requires(secs_1.clone());
 
     RuntimeBuilder::new()
-        .add_action(secs_1)
-        .add_action(secs_2)
+        .add_action(secs_1).await
+        .add_action(secs_2).await
         .build()
         .perform()
         .await

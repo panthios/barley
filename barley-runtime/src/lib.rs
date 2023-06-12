@@ -95,7 +95,7 @@ pub trait Action: Send + Sync {
   }
 
   /// Load required state.
-  async fn load_state(&mut self, _builder: RuntimeBuilder) {}
+  async fn load_state(&self, _builder: &mut RuntimeBuilder) {}
 
   /// Get the display name of the action.
   fn display_name(&self) -> String;
@@ -151,6 +151,11 @@ impl ActionObject {
   /// Add a dependency to the action.
   pub fn requires(&mut self, action: ActionObject) {
     self.deps.push(action);
+  }
+
+  /// Load the state
+  pub async fn load_state(&self, builder: &mut RuntimeBuilder) {
+    self.action.load_state(builder).await;
   }
 }
 

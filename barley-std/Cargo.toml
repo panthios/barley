@@ -12,7 +12,7 @@ edition = "2021"
 exclude = ["examples/*", "tests/*", "benches/*"]
 
 [dependencies]
-barley-runtime = { version = "0.5.1", path = "../barley-runtime" }
+barley-runtime = { version = "0.6.0", path = "../barley-runtime" }
 futures = "0.3.28"
 tokio = { version = "1.28.2", optional = true }
 
