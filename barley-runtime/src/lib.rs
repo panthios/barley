@@ -381,7 +381,10 @@ pub enum ActionError {
   NoActionReturn,
   /// The operation is not supported by the action.
   #[error("Operation not supported")]
-  OperationNotSupported
+  OperationNotSupported,
+  /// Required state was not loaded.
+  #[error("Required state was not loaded")]
+  StateNotLoaded
 }
 
 /// The operation to perform.
