@@ -1,13 +1,14 @@
 use tokio::sync::RwLock;
 use tokio::sync::Barrier;
-use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
 use tokio::task::JoinSet;
 
 use std::any::{Any, TypeId};
+use tracing::{debug, info, error};
 use std::{
     sync::Arc,
     collections::HashMap
 };
+
 use crate::Operation;
 use crate::{
     ActionObject, Id,
@@ -36,7 +37,6 @@ pub struct Runtime {
     ctx: Context,
     barriers: HashMap<Id, Arc<Barrier>>,
     outputs: Arc<RwLock<HashMap<Id, ActionOutput>>>,
-    progress: Arc<RwLock<MultiProgress>>,
     state: HashMap<TypeId, Arc<dyn Any + Send + Sync>>
 }
 
@@ -75,19 +75,10 @@ impl Runtime {
         }
 
         let mut join_set: JoinSet<Result<(), ActionError>> = JoinSet::new();
-        let bars = Arc::new(RwLock::new(Vec::new()));
-        let bars_clone = bars.clone();
 
-        let tick_loop = tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-                bars_clone.write().await.iter().for_each(|bar: &ProgressBar| bar.tick());
-            }
-        });
-
+        debug!("Starting actions");
         for action in actions {
             let runtime_clone = self.clone();
-            let bars = bars.clone();
 
             let action = action.clone();
 
@@ -116,32 +107,18 @@ impl Runtime {
                 }
 
                 let display_name = action.display_name();
-
-                let progress = runtime_clone.progress.write().await.add(ProgressBar::new_spinner());
-                progress.set_style(
-                    ProgressStyle::default_spinner().template(" {spinner} [{elapsed_precise}] {wide_msg}")
-                        .map_err(|_| ActionError::InternalError("PROGRESS_TEMPLATE_FAIL"))?
-                );
-
-                progress.set_message(display_name.clone());
-                bars.write().await.push(progress.clone());
+                info!("Starting action: {}", display_name);
 
                 let output = action.run(runtime_clone.clone(), Operation::Perform).await;
 
-                if let Err(errmsg) = output {
-                    progress.finish_with_message(format!("ERROR: {}", match errmsg.clone() {
-                        ActionError::ActionFailed(msg, _) => msg,
-                        ActionError::InternalError(msg) => msg.to_string(),
-                        ActionError::NoActionReturn => "No action return".into(),
-                        ActionError::OutputConversionFailed(msg) => msg,
-                        ActionError::OperationNotSupported => "Operation not supported".into(),
-                        ActionError::StateNotLoaded => "State not loaded".into(),
-                    }));
+                if let Err(err) = &output {
+                    error!("Action failed: {}", display_name);
+                    error!("Error: {}", err);
 
-                    return Err(errmsg)
+                    return Err(err.clone())
+                } else {
+                    info!("Action finished: {}", display_name);
                 }
-
-                progress.finish_and_clear();
 
                 let output = output.unwrap();
 
@@ -161,7 +138,6 @@ impl Runtime {
             match result {
                 Ok(Ok(())) => {},
                 Ok(Err(err)) => {
-                    tick_loop.abort();
                     join_set.abort_all();
 
                     if let ActionError::ActionFailed(_, long) = err.clone() {
@@ -171,7 +147,6 @@ impl Runtime {
                     return Err(err)
                 },
                 Err(_) => {
-                    tick_loop.abort();
                     join_set.abort_all();
 
                     return Err(ActionError::InternalError("JOIN_SET_ERROR"))
@@ -308,7 +283,6 @@ impl RuntimeBuilder {
             ctx: self.ctx,
             barriers: HashMap::new(),
             outputs: Arc::new(RwLock::new(HashMap::new())),
-            progress: Arc::new(RwLock::new(MultiProgress::new())),
             state: HashMap::new()
         }
     }

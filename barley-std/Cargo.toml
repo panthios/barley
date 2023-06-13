@@ -18,7 +18,7 @@ tokio = { version = "1.28.2", optional = true }
 
 [features]
 time = ["dep:tokio", "tokio?/time"]
-fs = ["dep:tokio", "tokio?/fs"]
+fs = ["dep:tokio", "tokio?/fs", "tokio?/io-util"]
 process = ["dep:tokio", "tokio?/process"]
 
 [dev-dependencies]
