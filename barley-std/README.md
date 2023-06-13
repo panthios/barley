@@ -12,12 +12,14 @@ use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), ActionError> {
+  tracing_subscriber::fmt::init();
+
   let sleep_1 = Sleep::new(Duration::from_secs(1));
   let sleep_2 = Sleep::new(Duration::from_secs(2));
 
   RuntimeBuilder::new()
-    .add_action(sleep_1)
-    .add_action(sleep_2)
+    .add_action(sleep_1.into()).await
+    .add_action(sleep_2.into()).await
     .build()
     .run()
     .await

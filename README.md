@@ -20,14 +20,16 @@ use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), ActionError> {
+  tracing_subscriber::fmt::init();
+
   let wait_1s: ActionObject = Sleep::new(Duration::from_secs(1)).into();
   let mut wait_2s: ActionObject = Sleep::new(Duration::from_secs(2)).into();
 
   wait_2s.requires(wait_1s.clone());
 
   RuntimeBuilder::new()
-    .add_action(wait_1s)
-    .add_action(wait_2s)
+    .add_action(wait_1s).await
+    .add_action(wait_2s).await
     .build()
     .run()
     .await
