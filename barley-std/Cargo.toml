@@ -7,7 +7,7 @@ documentation = "https://docs.rs/barley-std"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["barley", "standard", "library"]
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 exclude = ["examples/*", "tests/*", "benches/*"]
 
