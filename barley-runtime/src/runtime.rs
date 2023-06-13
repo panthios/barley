@@ -283,7 +283,7 @@ impl RuntimeBuilder {
             ctx: self.ctx,
             barriers: HashMap::new(),
             outputs: Arc::new(RwLock::new(HashMap::new())),
-            state: HashMap::new()
+            state: self.state
         }
     }
 
