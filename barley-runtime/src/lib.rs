@@ -31,6 +31,7 @@ mod runtime;
 mod scope;
 
 pub use runtime::{Runtime, RuntimeBuilder};
+pub use scope::Scope;
 
 /// A measurable, reversible task.
 /// 

@@ -6,5 +6,5 @@ pub use crate::{
   ContextCallbacks, ActionOutput,
   ActionInput, ActionObject,
   RuntimeBuilder, Probe,
-  Operation
+  Operation, Scope
 };
