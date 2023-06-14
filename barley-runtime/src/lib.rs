@@ -28,6 +28,7 @@ pub mod prelude;
 
 mod context;
 mod runtime;
+mod scope;
 
 pub use runtime::{Runtime, RuntimeBuilder};
 
@@ -309,7 +310,7 @@ impl<T> ActionInput<T> {
   /// 
   /// This method panics if the input is a
   /// dynamic value.
-  #[deprecated(since = "0.6.1", note = "Use a direct unwrapper like `is_X`, `match`, or `if let` instead")]
+  #[deprecated(since = "0.7.0", note = "Use a direct unwrapper like `is_X`, `match`, or `if let` instead")]
   pub fn unwrap_static(&self) -> &T {
     self.static_value().unwrap()
   }
@@ -321,7 +322,7 @@ impl<T> ActionInput<T> {
   /// 
   /// This method panics if the input is a static
   /// value.
-  #[deprecated(since = "0.6.1", note = "Use a direct unwrapper like `is_X`, `match`, or `if let` instead")]
+  #[deprecated(since = "0.7.0", note = "Use a direct unwrapper like `is_X`, `match`, or `if let` instead")]
   pub fn unwrap_dynamic(&self) -> ActionObject {
     self.dynamic().unwrap()
   }

@@ -14,7 +14,8 @@ use crate::{
     ActionObject, Id,
     ActionOutput,
     ActionError,
-    context::Context
+    context::Context,
+    scope::Scope
 };
 
 
@@ -298,6 +299,15 @@ impl RuntimeBuilder {
     pub async fn add_action(mut self, action: ActionObject) -> Self {
         action.load_state(&mut self).await;
         self.ctx.add_action(action);
+        self
+    }
+
+    /// Add a scope to the runtime.
+    pub async fn add_scope(mut self, scope: Scope) -> Self {
+        for action in scope.actions() {
+            self = self.add_action(action.clone()).await;
+        }
+
         self
     }
 
