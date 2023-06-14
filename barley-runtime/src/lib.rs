@@ -1,4 +1,7 @@
 #![deny(missing_docs)]
+#![warn(
+  clippy::pedantic
+)]
 
 //! `barley-runtime`
 //! 
@@ -82,6 +85,7 @@ impl ActionObject {
   }
 
   /// Get the display name of the action.
+  #[must_use]
   pub fn display_name(&self) -> String {
     self.action.display_name()
   }
@@ -260,6 +264,7 @@ pub enum ActionInput<T> {
 
 impl<T> ActionInput<T> {
   /// Creates a new input from an action.
+  #[must_use]
   pub fn new_dynamic(value: ActionObject) -> Self {
     Self::Dynamic(value)
   }
@@ -274,7 +279,7 @@ impl<T> ActionInput<T> {
   pub fn static_value(&self) -> Option<&T> {
     match self {
       Self::Static(value) => Some(value),
-      _ => None
+      Self::Dynamic(_) => None
     }
   }
 
@@ -283,7 +288,7 @@ impl<T> ActionInput<T> {
   pub fn dynamic(&self) -> Option<ActionObject> {
     match self {
       Self::Dynamic(action) => Some(action.clone()),
-      _ => None
+      Self::Static(_) => None
     }
   }
 
@@ -297,14 +302,26 @@ impl<T> ActionInput<T> {
     self.dynamic().is_some()
   }
 
-  /// Returns the static value, or panics if the input
-  /// is an action.
+  /// Returns the static value, and panics if the
+  /// input is an action.
+  /// 
+  /// # Panics
+  /// 
+  /// This method panics if the input is a
+  /// dynamic value.
+  #[deprecated(since = "0.6.1", note = "Use a direct unwrapper like `is_X`, `match`, or `if let` instead")]
   pub fn unwrap_static(&self) -> &T {
     self.static_value().unwrap()
   }
 
-  /// Returns the action, or panics if the input is
+  /// Returns the action, and panics if the input is
   /// static.
+  /// 
+  /// # Panics
+  /// 
+  /// This method panics if the input is a static
+  /// value.
+  #[deprecated(since = "0.6.1", note = "Use a direct unwrapper like `is_X`, `match`, or `if let` instead")]
   pub fn unwrap_dynamic(&self) -> ActionObject {
     self.dynamic().unwrap()
   }

@@ -42,6 +42,12 @@ pub struct Runtime {
 
 impl Runtime {
     /// Run the workflow.
+    /// 
+    /// # Errors
+    /// 
+    /// This function will return an error if any of
+    /// the actions fail, or if there is an internal
+    /// error with the runtime itself.
     pub async fn perform(mut self) -> Result<(), ActionError> {
         let actions = self.ctx.actions.clone();
         let mut dependents: HashMap<Id, usize> = HashMap::new();
@@ -50,12 +56,12 @@ impl Runtime {
         // example, if action A depends on action B,
         // then 1 action is dependent on B (A) and 0
         // actions are dependent on A.
-        for action in actions.iter() {
+        for action in &actions {
             dependents.insert(action.id, 0);
 
             action.deps()
                 .iter()
-                .map(|dep| dep.id())
+                .map(ActionObject::id)
                 .for_each(|id| {
                     let count = dependents.entry(id).or_insert(0);
                     *count += 1;
@@ -86,10 +92,10 @@ impl Runtime {
 
             let barriers = deps
                 .iter()
-                .map(|dep| dep.id());
+                .map(ActionObject::id);
 
             let barriers = barriers
-                .map(|id| self.barriers.get(&id).unwrap().clone())
+                .filter_map(|id| self.barriers.get(&id).cloned())
                 .collect::<Vec<_>>();
 
             let self_barriers = self.barriers.clone();
@@ -116,17 +122,15 @@ impl Runtime {
                     error!("Error: {}", err);
 
                     return Err(err.clone())
-                } else {
-                    info!("Action finished: {}", display_name);
                 }
-
-                let output = output.unwrap();
+                
+                info!("Action finished: {}", display_name);
 
                 if let Some(barrier) = self_barrier {
                     barrier.wait().await;
                 }
 
-                if let Some(output) = output {
+                if let Some(output) = output? {
                     runtime_clone.outputs.write().await.insert(action.id, output);
                 }
 
@@ -141,7 +145,7 @@ impl Runtime {
                     join_set.abort_all();
 
                     if let ActionError::ActionFailed(_, long) = err.clone() {
-                        println!("{}", long);
+                        println!("{long}");
                     }
 
                     return Err(err)
@@ -161,6 +165,18 @@ impl Runtime {
     /// 
     /// This will undo all of the actions that have
     /// been performed, if possible.
+    /// 
+    /// # Panics
+    /// 
+    /// This action can theoretically panic due to an internal
+    /// unwrapping of guaranteed `Some` variants. In practice,
+    /// this doesn't happen.
+    /// 
+    /// # Errors
+    /// 
+    /// This function will return an error if any of
+    /// the actions fail, or if there is an internal
+    /// error with the runtime itself.
     pub async fn rollback(self) -> Result<(), ActionError> {
         let actions = self.ctx.actions.clone();
         let mut dependencies: HashMap<Id, Vec<Id>> = HashMap::new();
@@ -168,7 +184,7 @@ impl Runtime {
         // Check if all of the actions have a rollback
         // function. If not, then the rollback cannot
         // be performed.
-        for action in actions.iter() {
+        for action in &actions {
             if !action.probe(self.clone()).await?.can_rollback {
                 return Err(ActionError::InternalError("NO_ROLLBACK"))
             }
@@ -177,12 +193,12 @@ impl Runtime {
         // Get the dependencies for each action. For
         // example, if action A depends on action B,
         // then B is a dependency of A.
-        for action in actions.iter() {
+        for action in &actions {
             dependencies.insert(action.id, Vec::new());
 
             action.deps()
                 .iter()
-                .map(|dep| dep.id())
+                .map(ActionObject::id)
                 .for_each(|id| {
                     let deps = dependencies.entry(id).or_insert(Vec::new());
                     deps.push(action.id);
@@ -226,7 +242,7 @@ impl Runtime {
                     join_set.abort_all();
 
                     if let ActionError::ActionFailed(_, long) = err.clone() {
-                        println!("{}", long);
+                        println!("{long}");
                     }
 
                     return Err(err)
@@ -248,6 +264,12 @@ impl Runtime {
     }
 
     /// Get the state object of a type.
+    /// 
+    /// # Panics
+    /// 
+    /// This function will panic if the state object
+    /// is not the type that is requested.
+    #[must_use]
     pub fn get_state<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
         self.state.get(&TypeId::of::<T>()).cloned().map(|state| {
             state.downcast::<T>().unwrap()
@@ -256,6 +278,7 @@ impl Runtime {
 }
 
 /// A builder for a runtime.
+#[allow(clippy::module_name_repetitions)]
 pub struct RuntimeBuilder {
     ctx: Context,
     state: HashMap<TypeId, Arc<dyn Any + Send + Sync>>
@@ -263,6 +286,7 @@ pub struct RuntimeBuilder {
 
 impl RuntimeBuilder {
     /// Create a new runtime builder.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             ctx: Context::new(),
@@ -278,6 +302,7 @@ impl RuntimeBuilder {
     }
 
     /// Build the runtime.
+    #[must_use]
     pub fn build(self) -> Runtime {
         Runtime {
             ctx: self.ctx,
