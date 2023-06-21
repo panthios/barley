@@ -1,4 +1,4 @@
-use crate::ActionObject;
+use crate::action::Node;
 
 
 /// A collection of actions.
@@ -9,7 +9,7 @@ use crate::ActionObject;
 /// runtimes with many actions.
 #[derive(Default, Clone)]
 pub struct Scope {
-    actions: Vec<ActionObject>
+    actions: Vec<Node>
 }
 
 impl Scope {
@@ -26,7 +26,7 @@ impl Scope {
     /// The action object will be returned
     /// so that it can be used to add
     /// dependencies.
-    pub fn add_action<A: Into<ActionObject>>(&mut self, action: A) -> ActionObject {
+    pub fn add_action<A: Into<Node>>(&mut self, action: A) -> Node {
         let action = action.into();
         self.actions.push(action.clone());
         action
@@ -34,7 +34,7 @@ impl Scope {
 
     /// List the actions in the scope.
     #[must_use]
-    pub fn actions(&self) -> &[ActionObject] {
+    pub fn actions(&self) -> &[Node] {
         &self.actions
     }
 }

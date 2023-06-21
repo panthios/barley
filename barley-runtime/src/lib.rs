@@ -14,9 +14,7 @@
 //! [`Runtime`]: struct.Runtime.html
 
 use uuid::Uuid;
-use std::sync::Arc;
 use thiserror::Error;
-use async_trait::async_trait;
 
 /// The prelude for the `barley-runtime` crate.
 /// 
@@ -35,10 +33,10 @@ mod input;
 mod error;
 
 pub use runtime::{Runtime, RuntimeBuilder};
-pub use action::{Action, ActionObject};
-pub use output::ActionOutput;
-pub use input::ActionInput;
-pub use error::ActionError;
+pub use action::{Action, Node};
+pub use output::Output;
+pub use input::Input;
+pub use error::Error;
 pub use scope::Scope;
 
 

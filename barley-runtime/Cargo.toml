@@ -10,6 +10,10 @@ keywords = ["barley", "runtime", "context", "scripting"]
 version = "0.7.0"
 edition = "2021"
 
+[features]
+default = []
+next = []
+
 [dependencies]
 async-trait = "0.1.68"
 tokio = { version = "1.28.1", features = ["sync", "rt", "time"] }

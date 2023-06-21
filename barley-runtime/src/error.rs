@@ -4,7 +4,7 @@ use thiserror::Error;
 /// Any error that can occur during an action.
 #[derive(Debug, Error, Clone)]
 #[non_exhaustive]
-pub enum ActionError {
+pub enum Error {
     /// An error occured internally in the action.
     #[error("{0}")]
     ActionFailed(String, String),

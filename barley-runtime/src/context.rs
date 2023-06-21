@@ -1,4 +1,4 @@
-use super::ActionObject;
+use super::action::Node;
 
 
 /// A context for running actions.
@@ -6,7 +6,7 @@ use super::ActionObject;
 /// There should only be one of these per workflow
 #[derive(Default, Clone)]
 pub struct Context {
-  pub(crate) actions: Vec<ActionObject>
+  pub(crate) actions: Vec<Node>
 }
 
 impl Context {
@@ -23,7 +23,7 @@ impl Context {
   }
 
   /// Add an action to the context.
-  pub fn add_action(&mut self, action: ActionObject) {
+  pub fn add_action(&mut self, action: Node) {
     self.actions.push(action);
   }
 }

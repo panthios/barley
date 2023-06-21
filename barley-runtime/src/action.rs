@@ -1,9 +1,8 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 use crate::{
-    Runtime, RuntimeBuilder, ActionError,
-    ActionOutput, Probe, Operation,
-    Id
+    Runtime, RuntimeBuilder, Error,
+    Output, Probe, Operation, Id
 };
 
 
@@ -18,14 +17,14 @@ use crate::{
 pub trait Action: Send + Sync {
     /// Run the action.
     /// 
-    /// This method takes a [`Runtime`] object, which
+    /// This method takes a [`Runtime`] node, which
     /// contains the context for the action. It also
     /// takes an [`Operation`], which is used to
     /// determine what the action should do.
-    async fn run(&self, runtime: Runtime, operation: Operation) -> Result<Option<ActionOutput>, ActionError>;
+    async fn run(&self, runtime: Runtime, operation: Operation) -> Result<Option<Output>, Error>;
 
     /// Probe the action for specific information.
-    async fn probe(&self, runtime: Runtime) -> Result<Probe, ActionError>;
+    async fn probe(&self, runtime: Runtime) -> Result<Probe, Error>;
 
     /// Load required state.
     async fn load_state(&self, _builder: &mut RuntimeBuilder) {}
@@ -34,22 +33,22 @@ pub trait Action: Send + Sync {
     fn display_name(&self) -> String;
 }
 
-/// A usable action object.
+/// A usable action node.
 /// 
 /// This struct is used by actions to store their
 /// dependencies and identification. It should
 /// not be constructed directly, unless you are
 /// writing a custom Action.
 #[derive(Clone)]
-pub struct ActionObject {
+pub struct Node {
     action: Arc<dyn Action>,
-    deps: Vec<ActionObject>,
+    deps: Vec<Node>,
     pub(crate) id: Id
 }
 
 
-impl ActionObject {
-    /// Create a new action object.
+impl Node {
+    /// Create a new action node.
     /// 
     /// This method should not be called directly,
     /// unless you are writing a custom Action.
@@ -71,20 +70,20 @@ impl ActionObject {
         self.id
     }
   
-    pub(crate) fn deps(&self) -> Vec<ActionObject> {
+    pub(crate) fn deps(&self) -> Vec<Node> {
         self.deps.clone()
     }
   
-    pub(crate) async fn probe(&self, ctx: Runtime) -> Result<Probe, ActionError> {
+    pub(crate) async fn probe(&self, ctx: Runtime) -> Result<Probe, Error> {
         self.action.probe(ctx).await
     }
   
-    pub(crate) async fn run(&self, ctx: Runtime, operation: Operation) -> Result<Option<ActionOutput>, ActionError> {
+    pub(crate) async fn run(&self, ctx: Runtime, operation: Operation) -> Result<Option<Output>, Error> {
         self.action.run(ctx, operation).await
     }
   
     /// Add a dependency to the action.
-    pub fn requires(&mut self, action: ActionObject) {
+    pub fn requires(&mut self, action: Node) {
         self.deps.push(action);
     }
   
@@ -94,7 +93,7 @@ impl ActionObject {
     }
 }
 
-impl<A> From<A> for ActionObject
+impl<A> From<A> for Node
 where
 A: Action + 'static {
     fn from(action: A) -> Self {

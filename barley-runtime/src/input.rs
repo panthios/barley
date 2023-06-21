@@ -1,4 +1,4 @@
-use crate::ActionObject;
+use crate::action::Node;
 
 
 /// An input for an action.
@@ -7,17 +7,17 @@ use crate::ActionObject;
 /// enum, but it is recommended to do so. It allows
 /// users to pass both static values and dependency
 /// outputs to actions.
-pub enum ActionInput<T> {
+pub enum Input<T> {
     /// A static value.
     Static(T),
     /// A value from an action.
-    Dynamic(ActionObject)
+    Dynamic(Node)
 }
 
-impl<T> ActionInput<T> {
+impl<T> Input<T> {
     /// Creates a new input from an action.
     #[must_use]
-    pub fn new_dynamic(value: ActionObject) -> Self {
+    pub fn new_dynamic(value: Node) -> Self {
         Self::Dynamic(value)
     }
 
@@ -37,7 +37,7 @@ impl<T> ActionInput<T> {
 
     /// Returns the action, or `None` if the input is
     /// static.
-    pub fn dynamic(&self) -> Option<ActionObject> {
+    pub fn dynamic(&self) -> Option<Node> {
         match self {
             Self::Dynamic(action) => Some(action.clone()),
             Self::Static(_) => None
@@ -74,18 +74,18 @@ impl<T> ActionInput<T> {
     /// This method panics if the input is a static
     /// value.
     #[deprecated(since = "0.7.0", note = "Use a direct unwrapper like `is_X`, `match`, or `if let` instead")]
-    pub fn unwrap_dynamic(&self) -> ActionObject {
+    pub fn unwrap_dynamic(&self) -> Node {
         self.dynamic().unwrap()
     }
 }
 
-impl<T> From<T> for ActionInput<T> {
+impl<T> From<T> for Input<T> {
     fn from(value: T) -> Self {
         Self::new_static(value)
     }
 }
 
-impl<T: Default> Default for ActionInput<T> {
+impl<T: Default> Default for Input<T> {
     fn default() -> Self {
         Self::new_static(T::default())
     }

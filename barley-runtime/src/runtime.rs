@@ -10,13 +10,12 @@ use std::{
 };
 
 use crate::Operation;
-use crate::{
-    ActionObject, Id,
-    ActionOutput,
-    ActionError,
-    context::Context,
-    scope::Scope
-};
+use crate::context::Context;
+use crate::scope::Scope;
+use crate::action::Node;
+use crate::output::Output;
+use crate::error::Error;
+use crate::Id;
 
 
 /// The runtime for a workflow.
@@ -37,7 +36,7 @@ use crate::{
 pub struct Runtime {
     ctx: Context,
     barriers: HashMap<Id, Arc<Barrier>>,
-    outputs: Arc<RwLock<HashMap<Id, ActionOutput>>>,
+    outputs: Arc<RwLock<HashMap<Id, Output>>>,
     state: HashMap<TypeId, Arc<dyn Any + Send + Sync>>
 }
 
@@ -49,7 +48,7 @@ impl Runtime {
     /// This function will return an error if any of
     /// the actions fail, or if there is an internal
     /// error with the runtime itself.
-    pub async fn perform(mut self) -> Result<(), ActionError> {
+    pub async fn perform(mut self) -> Result<(), Error> {
         let actions = self.ctx.actions.clone();
         let mut dependents: HashMap<Id, usize> = HashMap::new();
 
@@ -62,7 +61,7 @@ impl Runtime {
 
             action.deps()
                 .iter()
-                .map(ActionObject::id)
+                .map(Node::id)
                 .for_each(|id| {
                     let count = dependents.entry(id).or_insert(0);
                     *count += 1;
@@ -81,7 +80,7 @@ impl Runtime {
             self.barriers.insert(id, barrier);
         }
 
-        let mut join_set: JoinSet<Result<(), ActionError>> = JoinSet::new();
+        let mut join_set: JoinSet<Result<(), Error>> = JoinSet::new();
 
         debug!("Starting actions");
         for action in actions {
@@ -93,7 +92,7 @@ impl Runtime {
 
             let barriers = deps
                 .iter()
-                .map(ActionObject::id);
+                .map(Node::id);
 
             let barriers = barriers
                 .filter_map(|id| self.barriers.get(&id).cloned())
@@ -145,7 +144,7 @@ impl Runtime {
                 Ok(Err(err)) => {
                     join_set.abort_all();
 
-                    if let ActionError::ActionFailed(_, long) = err.clone() {
+                    if let Error::ActionFailed(_, long) = err.clone() {
                         println!("{long}");
                     }
 
@@ -154,7 +153,7 @@ impl Runtime {
                 Err(_) => {
                     join_set.abort_all();
 
-                    return Err(ActionError::InternalError("JOIN_SET_ERROR"))
+                    return Err(Error::InternalError("JOIN_SET_ERROR"))
                 }
             }
         }
@@ -178,7 +177,7 @@ impl Runtime {
     /// This function will return an error if any of
     /// the actions fail, or if there is an internal
     /// error with the runtime itself.
-    pub async fn rollback(self) -> Result<(), ActionError> {
+    pub async fn rollback(self) -> Result<(), Error> {
         let actions = self.ctx.actions.clone();
         let mut dependencies: HashMap<Id, Vec<Id>> = HashMap::new();
 
@@ -187,7 +186,7 @@ impl Runtime {
         // be performed.
         for action in &actions {
             if !action.probe(self.clone()).await?.can_rollback {
-                return Err(ActionError::InternalError("NO_ROLLBACK"))
+                return Err(Error::InternalError("NO_ROLLBACK"))
             }
         }
 
@@ -199,7 +198,7 @@ impl Runtime {
 
             action.deps()
                 .iter()
-                .map(ActionObject::id)
+                .map(Node::id)
                 .for_each(|id| {
                     let deps = dependencies.entry(id).or_insert(Vec::new());
                     deps.push(action.id);
@@ -224,7 +223,7 @@ impl Runtime {
         });
 
         // Create spawns
-        let mut join_set: JoinSet<Result<(), ActionError>> = JoinSet::new();
+        let mut join_set: JoinSet<Result<(), Error>> = JoinSet::new();
 
         for action in actions {
             let runtime_clone = self.clone();
@@ -242,7 +241,7 @@ impl Runtime {
                 Ok(Err(err)) => {
                     join_set.abort_all();
 
-                    if let ActionError::ActionFailed(_, long) = err.clone() {
+                    if let Error::ActionFailed(_, long) = err.clone() {
                         println!("{long}");
                     }
 
@@ -251,7 +250,7 @@ impl Runtime {
                 Err(_) => {
                     join_set.abort_all();
 
-                    return Err(ActionError::InternalError("JOIN_SET_ERROR"))
+                    return Err(Error::InternalError("JOIN_SET_ERROR"))
                 }
             }
         }
@@ -260,7 +259,7 @@ impl Runtime {
     }
 
     /// Get the output of an action.
-    pub async fn get_output(&self, obj: ActionObject) -> Option<ActionOutput> {
+    pub async fn get_output(&self, obj: Node) -> Option<Output> {
         self.outputs.read().await.get(&obj.id()).cloned()
     }
 
@@ -296,7 +295,7 @@ impl RuntimeBuilder {
     }
 
     /// Add an action to the runtime.
-    pub async fn add_action(mut self, action: ActionObject) -> Self {
+    pub async fn add_action(mut self, action: Node) -> Self {
         action.load_state(&mut self).await;
         self.ctx.add_action(action);
         self
