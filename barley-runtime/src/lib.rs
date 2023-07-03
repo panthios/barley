@@ -24,6 +24,17 @@ use thiserror::Error;
 /// directly.
 pub mod prelude;
 
+/// Synchronous versions of the default runtime.
+/// 
+/// `barley-runtime` is asynchronous by default. This
+/// module contains a synchronous version of the
+/// default runtime. Certain use cases may require
+/// or benefit from a synchronous runtime. When/if this
+/// crate supports `no_std`, only the synchronous
+/// runtime will be available under `no_std`.
+#[cfg(feature = "blocking")]
+pub mod blocking;
+
 mod context;
 mod runtime;
 mod scope;

@@ -13,6 +13,7 @@ edition = "2021"
 [features]
 default = []
 next = []
+blocking = []
 
 [dependencies]
 async-trait = "0.1.68"

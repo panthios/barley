@@ -2,6 +2,8 @@
   "rust-analyzer.cargo.features": [
     "barley-std/fs",
     "barley-std/time",
-    "barley-std/process"
+    "barley-std/process",
+
+    "barley-runtime/blocking"
   ]
 }
