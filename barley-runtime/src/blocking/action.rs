@@ -1,7 +1,7 @@
 use crate::{Id, Probe, Operation};
 use crate::error::Error;
 use crate::output::Output;
-use super::runtime::{Runtime, Builder};
+use super::runtime::{Runtime, RuntimeBuilder};
 
 /// An action that can be run by the Barley runtime.
 /// 
@@ -35,7 +35,7 @@ pub trait Action {
     /// handled internally.
     /// 
     /// [`Runtime`]: https://docs.rs/barley-runtime/latest/barley_runtime/blocking/struct.Runtime.html
-    fn probe(&self) -> Result<Probe, Error>;
+    fn probe(&self, runtime: &Runtime) -> Result<Probe, Error>;
 
     /// Load the state of the action.
     /// 
@@ -43,7 +43,7 @@ pub trait Action {
     /// Use the [`Runtime`] to run the workflow.
     /// 
     /// [`Runtime`]: https://docs.rs/barley-runtime/latest/barley_runtime/blocking/struct.Runtime.html
-    fn load_state(&self, _builder: &mut Builder) {}
+    fn load_state(&self, _builder: &mut RuntimeBuilder) {}
 
     /// Get the display name of the action.
     /// 
@@ -99,8 +99,8 @@ impl<'node> Node<'node> {
         self.deps.clone()
     }
 
-    pub(crate) fn probe(&self) -> Result<Probe, Error> {
-        self.action.probe()
+    pub(crate) fn probe(&self, runtime: &Runtime) -> Result<Probe, Error> {
+        self.action.probe(runtime)
     }
 
     pub(crate) fn run(&self, runtime: &Runtime, operation: Operation) -> Result<Option<Output>, Error> {
@@ -126,7 +126,7 @@ impl<'node> Node<'node> {
     /// Use the [`Runtime`] to run the workflow.
     /// 
     /// [`Runtime`]: https://docs.rs/barley-runtime/latest/barley_runtime/blocking/struct.Runtime.html
-    pub fn load_state(&self, builder: &mut Builder) {
+    pub fn load_state(&self, builder: &mut RuntimeBuilder) {
         self.action.load_state(builder);
     }
 }

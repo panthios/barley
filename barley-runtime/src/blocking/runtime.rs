@@ -80,6 +80,10 @@ impl<'run> Runtime<'run> {
         let mut dependencies: HashMap<Id, Vec<Id>> = HashMap::new();
 
         for action in actions {
+            if !action.probe(&self)?.can_rollback {
+                return Err(Error::OperationNotSupported);
+            }
+
             dependencies.insert(action.id, Vec::new());
 
             action.deps()
@@ -134,13 +138,14 @@ impl<'run> Runtime<'run> {
 /// 
 /// This struct is used to build a runtime. Once
 /// you have added all of your actions, you can
-/// call [`build`] to create the runtime.
-pub struct Builder<'build> {
+/// call [`build`] to create the runtime.\
+#[allow(clippy::module_name_repetitions)]
+pub struct RuntimeBuilder<'build> {
     ctx: Vec<Node<'build>>,
     state: HashMap<TypeId, Box<dyn Any>>
 }
 
-impl<'build> Builder<'build> {
+impl<'build> RuntimeBuilder<'build> {
     /// Create a new builder.
     #[must_use]
     pub fn new() -> Self {
@@ -185,7 +190,7 @@ impl<'build> Builder<'build> {
     }
 }
 
-impl Default for Builder<'_> {
+impl Default for RuntimeBuilder<'_> {
     fn default() -> Self {
         Self::new()
     }

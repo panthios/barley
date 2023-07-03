@@ -22,6 +22,7 @@ use thiserror::Error;
 /// and traits for the `barley-runtime` crate. It
 /// should be used instead of importing the types
 /// directly.
+#[cfg(feature = "async")]
 pub mod prelude;
 
 /// Synchronous versions of the default runtime.
@@ -35,21 +36,26 @@ pub mod prelude;
 #[cfg(feature = "blocking")]
 pub mod blocking;
 
-mod context;
-mod runtime;
-mod scope;
-mod action;
-mod output;
-mod input;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "async")] {
+        mod context;
+        mod runtime;
+        mod scope;
+        mod action;
+        mod input;
+
+        pub use runtime::{Runtime, RuntimeBuilder};
+        pub use action::{Action, Node};
+        pub use input::Input;
+        pub use scope::Scope;
+    }
+}
+
 mod error;
-
-pub use runtime::{Runtime, RuntimeBuilder};
-pub use action::{Action, Node};
-pub use output::Output;
-pub use input::Input;
 pub use error::Error;
-pub use scope::Scope;
 
+mod output;
+pub use output::Output;
 
 /// A unique identifier for an action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
