@@ -1,0 +1,13 @@
+[package]
+name = "barley-http"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.71"
+ureq = "2.7.1"
+
+[dependencies.barley-runtime]
+version = "0.6.1"
+path = "../../barley-runtime"
+features = ["next"]
