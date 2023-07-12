@@ -37,7 +37,8 @@ pub struct Runtime {
     ctx: Context,
     barriers: HashMap<Id, Arc<Barrier>>,
     outputs: Arc<RwLock<HashMap<Id, Output>>>,
-    state: HashMap<TypeId, Arc<dyn Any + Send + Sync>>
+    state: HashMap<TypeId, Arc<dyn Any + Send + Sync>>,
+    variables: HashMap<String, Arc<dyn Any + Send + Sync>>
 }
 
 impl Runtime {
@@ -275,13 +276,32 @@ impl Runtime {
             state.downcast::<T>().unwrap()
         })
     }
+
+    /// Set a variable.
+    pub fn set_variable<T: Send + Sync + 'static>(&mut self, name: &str, value: T) {
+        self.variables.insert(name.to_string(), Arc::new(value));
+    }
+
+    /// Get a variable.
+    /// 
+    /// # Panics
+    /// 
+    /// This function will panic if the variable
+    /// is not the type that is requested.
+    #[must_use]
+    pub fn get_variable<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
+        self.variables.get("name").cloned().map(|state| {
+            state.downcast::<T>().unwrap()
+        })
+    }
 }
 
 /// A builder for a runtime.
 #[allow(clippy::module_name_repetitions)]
 pub struct RuntimeBuilder {
     ctx: Context,
-    state: HashMap<TypeId, Arc<dyn Any + Send + Sync>>
+    state: HashMap<TypeId, Arc<dyn Any + Send + Sync>>,
+    variables: HashMap<String, Arc<dyn Any + Send + Sync>>
 }
 
 impl RuntimeBuilder {
@@ -290,7 +310,8 @@ impl RuntimeBuilder {
     pub fn new() -> Self {
         Self {
             ctx: Context::new(),
-            state: HashMap::new()
+            state: HashMap::new(),
+            variables: HashMap::new()
         }
     }
 
@@ -317,7 +338,8 @@ impl RuntimeBuilder {
             ctx: self.ctx,
             barriers: HashMap::new(),
             outputs: Arc::new(RwLock::new(HashMap::new())),
-            state: self.state
+            state: self.state,
+            variables: HashMap::new()
         }
     }
 
@@ -325,6 +347,25 @@ impl RuntimeBuilder {
     pub fn add_state<T: Send + Sync + 'static>(&mut self, state: T) -> &mut Self {
         self.state.insert(TypeId::of::<T>(), Arc::new(state));
         self
+    }
+
+    /// Set a variable.
+    pub fn set_variable<T: Send + Sync + 'static>(&mut self, name: &str, value: T) -> &mut Self {
+        self.variables.insert(name.to_string(), Arc::new(value));
+        self
+    }
+
+    /// Get a variable.
+    /// 
+    /// # Panics
+    /// 
+    /// This function will panic if the variable
+    /// is not the type that is requested.
+    #[must_use]
+    pub fn get_variable<T: Send + Sync + 'static>(&self) -> Option<Arc<T>> {
+        self.variables.get("name").cloned().map(|state| {
+            state.downcast::<T>().unwrap()
+        })
     }
 }
 

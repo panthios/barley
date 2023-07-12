@@ -1,5 +1,6 @@
 [workspace]
 members = [
   "barley-runtime",
-  "barley-std"
+  "barley-std",
+  "packages/*"
 ]

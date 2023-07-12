@@ -22,5 +22,8 @@ pub enum Error {
     OperationNotSupported,
     /// Required state was not loaded.
     #[error("Required state was not loaded")]
-    StateNotLoaded
+    StateNotLoaded,
+    /// A dependency returned the wrong type.
+    #[error("Dependency returned the wrong type")]
+    WrongOutputType
 }

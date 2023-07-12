@@ -79,6 +79,7 @@ impl std::fmt::Display for Id {
 /// should do. It is used by the [`run`] method.
 /// 
 /// [`run`]: trait.Action.html#method.run
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Operation {
     /// Perform the action.
     Perform,
